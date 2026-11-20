@@ -583,33 +583,28 @@
   function playRound() { let n = 0; while (G.fights.some(f => !f.S.over) && n++ < 1200) { roundTick().forEach(f => resolveFight(f, f.S)); G.fights.forEach(f => f.S.ev.length = 0); } }
   function resolveOthers() { G.fights.forEach(f => { f.S = simInit(f.A, f.B, f.seed); }); playRound(); }
 
-  /* ---------- musique (lecteurs YouTube cachés) ---------- */
-  const TRK = { main: "LmWsog9oHI8", pvp: ["Fx6NAT_jgTg", "GM5LWGlNd4M", "OwMAKI8HQc4", "zVEI77M8qyU"], boss1: "oZZY7Ll4ZzE", boss2: "kzN6u-n5BT4", boss3: "hA83EHtcAGM", win: "L9Hy3WFlcLQ" };
-  const MU = { vol: 40, cur: null, box: null, main: null, alt: null };
+  /* ---------- musique (fichiers audio du jeu : pas de pub, démarrage immédiat) ---------- */
+  const TRK = { main: "principale", pvp: ["combat1", "combat2", "combat3", "combat4"], boss1: "boss-facile", boss2: "boss-moyen", boss3: "boss-final", win: "victoire" };
+  const MU = { vol: 40, cur: null, main: null, alt: null, next: null };
   try { const v = +localStorage.getItem("wc-arena-vol"); if (localStorage.getItem("wc-arena-vol") != null && v >= 0 && v <= 100) MU.vol = v; } catch (_) {}
-  const yt = (id, auto) => `https://www.youtube-nocookie.com/embed/${id}?autoplay=${auto ? 1 : 0}&loop=1&playlist=${id}&controls=0&disablekb=1&playsinline=1&rel=0&iv_load_policy=3&enablejsapi=1`;
-  const muCmd = (f, func, args) => { try { f && f.contentWindow && f.contentWindow.postMessage(JSON.stringify({ event: "command", func, args: args || "" }), "*"); } catch (_) {} };
-  function muFrame(id, auto) { const f = document.createElement("iframe"); f.allow = "autoplay; encrypted-media"; f.title = "Musique"; f.src = yt(id, auto !== false);
-    f.addEventListener("load", () => [200, 800, 1600, 3000, 5000].forEach(t => setTimeout(() => { try { f.contentWindow.postMessage(JSON.stringify({ event: "listening", id: 1 }), "*"); } catch (_) {} muCmd(f, "setVolume", [MU.vol]); if (f === MU.main && MU.alt) muCmd(f, "pauseVideo"); if (MU.next && f === MU.next.f) muCmd(f, "pauseVideo"); }, t)));
-    MU.box.appendChild(f); return f; }
+  const muBase = (() => { try { const sc = document.currentScript; return sc ? sc.src.replace(/arena\.js.*$/, "music/") : "vendor/arena/music/"; } catch (_) { return "vendor/arena/music/"; } })();
+  const muPick = key => { const t = TRK[key]; return Array.isArray(t) ? t[Math.floor(Math.random() * t.length)] : t; };
+  function muAudio(name) { const a = new Audio(muBase + name + ".m4a"); a.loop = true; a.preload = "auto"; a.volume = MU.vol / 100; return a; }
+  const muPlay = a => { if (!a) return; a.volume = MU.vol / 100; const p = a.play(); if (p && p.catch) p.catch(() => {}); };
   // key : "main" (préparation et monstres), "pvp", "boss1", "boss2", "boss3", "win", ou null pour tout couper
   function music(key) {
-    if (typeof document === "undefined" || !root) return; if (key === MU.cur) return; MU.cur = key;
-    if (!MU.box || !MU.box.isConnected) { MU.box = document.createElement("div"); MU.box.className = "ar-music"; document.body.appendChild(MU.box); MU.main = MU.alt = null; }
-    if (MU.alt) { MU.alt.remove(); MU.alt = null; }
-    if (!key || MU.vol <= 0 && !MU.main && key === "main") { if (!key && MU.main) { MU.main.remove(); MU.main = null; } if (!key) return; }
-    if (key === "main") { if (MU.main) { muCmd(MU.main, "playVideo"); muCmd(MU.main, "setVolume", [MU.vol]); } else MU.main = muFrame(TRK.main); return; }
-    if (MU.main) muCmd(MU.main, "pauseVideo");
-    if (MU.next && MU.next.key === key && MU.next.f.isConnected) { const f = MU.alt = MU.next.f; MU.next = null; [0, 150, 500].forEach(d => setTimeout(() => { if (MU.alt === f) { muCmd(f, "setVolume", [MU.vol]); muCmd(f, "playVideo"); } }, d)); return; }
-    const t = TRK[key]; MU.alt = muFrame(Array.isArray(t) ? t[Math.floor(Math.random() * t.length)] : t);
+    if (typeof Audio === "undefined" || !root) return; if (key === MU.cur) return; MU.cur = key;
+    if (MU.alt) { MU.alt.pause(); MU.alt = null; }
+    if (!key) { if (MU.main) MU.main.pause(); return; }
+    if (key === "main") { if (!MU.main) MU.main = muAudio(TRK.main); return muPlay(MU.main); }
+    if (MU.main) MU.main.pause();
+    if (MU.next && MU.next.key === key) { MU.alt = MU.next.a; MU.next = null; } else MU.alt = muAudio(muPick(key));
+    try { MU.alt.currentTime = 0; } catch (_) {} muPlay(MU.alt);
   }
   // charge à l'avance la musique du prochain combat pour qu'elle parte tout de suite
-  function muPrep(key) {
-    if (typeof document === "undefined" || !MU.box || !MU.box.isConnected) return; if (MU.next) { if (MU.next.key === key) return; MU.next.f.remove(); MU.next = null; }
-    if (!key || !TRK[key] || key === "main") return; const t = TRK[key]; MU.next = { key, f: muFrame(Array.isArray(t) ? t[Math.floor(Math.random() * t.length)] : t, false) };
-  }
-  function muVol(v) { MU.vol = v; try { localStorage.setItem("wc-arena-vol", v); } catch (_) {} [MU.main, MU.alt, MU.next && MU.next.f].forEach(f => muCmd(f, "setVolume", [v])); }
-  function muStop() { MU.cur = null; if (MU.box) MU.box.remove(); MU.box = MU.main = MU.alt = MU.next = null; }
+  function muPrep(key) { if (typeof Audio === "undefined" || !key || !TRK[key] || key === "main") return; if (MU.next && MU.next.key === key) return; MU.next = { key, a: muAudio(muPick(key)) }; }
+  function muVol(v) { MU.vol = v; try { localStorage.setItem("wc-arena-vol", v); } catch (_) {} [MU.main, MU.alt].forEach(a => { if (a) a.volume = v / 100; }); }
+  function muStop() { MU.cur = null; [MU.main, MU.alt].forEach(a => { if (a) a.pause(); }); MU.main = MU.alt = MU.next = null; }
 
   /* ---------- bruitages (synthétisés, aucun fichier) ---------- */
   const SF = { ctx: null, vol: 50, last: {} };
@@ -764,6 +759,7 @@
       <p><b>Duo :</b> deux joueurs partagent les mêmes PV. Chacun mène son combat ; si tu gagnes le tien, tes survivants partent en renfort chez ton coéquipier. Tu peux aussi lui donner une unité par manche (bouton 🎁 sur sa fiche).</p>
       <p><b>Mort subite :</b> après 30 s de combat, les dégâts augmentent et les soins diminuent jusqu'à ce qu'un camp tombe.</p>
       <h3>Synergies</h3>${Object.keys(TR).map(k => `<p>${TICO(k)} <b>${TNAME(k)}</b> (${TR[k].t.join(" / ")}) : ${TR[k].t.map((t, i) => TR[k].d(TR[k].v[i])).slice(-1)[0].replace(/\d+(\.\d+)?/g, m => m)}</p>`).join("")}
+      <p class="ar-hint">🎵 Musiques libres de droits : Infraction – No Copyright Music, MOKKA et Cold Cinema.</p>
       <button class="ar-b" data-x>Fermer</button></div>`;
     root.appendChild(m); m.onclick = e => { if (e.target === m || e.target.closest("[data-x]")) m.remove(); };
   }
