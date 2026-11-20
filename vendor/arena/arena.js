@@ -1126,7 +1126,7 @@
     f.S.units.forEach(u => { if (u.alive) addTok(u); });
     $("#ar-timer").textContent = f === UI.fight && !G.spec ? "contre " + (f.b === G.me ? f.a.name : foeName(f)) : `👁 ${f.a.name} contre ${foeName(f)}`;
     let v = $("#ar-view"); if (f !== UI.fight || G.spec) { if (!v) { v = document.createElement("div"); v.id = "ar-view"; v.className = "ar-view"; $("#ar-board").appendChild(v); }
-      v.innerHTML = `<span>👁 ${esc(f.a.name)} (en bas) contre ${esc(foeName(f))} (en haut)</span>${G.spec ? "" : `<button class="ar-b" data-act="myfight">Revenir à mon combat</button>`}`; } else if (v) v.remove();
+      v.innerHTML = `<span>👁 ${esc(f.a.name)} · ${esc(foeName(f))}</span>${G.spec ? "" : `<button class="ar-b" data-act="myfight">↩ mon combat</button>`}`; } else if (v) v.remove();
     drawPlayers(); drawDmg();
   }
   // si je suis le camp du haut dans la simulation, on retourne l'affichage pour que mon équipe reste en bas
@@ -1141,9 +1141,9 @@
     const ended = roundTick(); G.fights.forEach(f => { if (f === UI.view) showEvents(f.S); f.S.ev.length = 0; });
     for (const f of ended) { const S = f.S; { f.done = true; const g0 = G.me.gold; resolveFight(f, S);
         if (f === UI.fight && !G.spec) { G.hist[G.ri] = f.res.w ? 1 : 0; sfx(f.res.w ? "win" : "lose"); const b = $("#ar-banner"); b.hidden = false; b.className = "ar-banner " + (f.res.w ? "win" : "lose");
-          b.innerHTML = (f.res.w ? `Victoire !<small>+${G.me.gold - g0} 🪙</small>` : `Défaite<small>−${f.res.d} PV</small>`) + (f.res.it && f.res.it.length || f.res.pick ? `<small class="ar-loot">Butin : ${(f.res.it || []).map(id => ITEM[id].ic).join(" ")}${f.res.pick ? " + 1 au choix 🎁" : ""}</small>` : "") + (G.fights.some(x => !x.done) ? `<em>Les autres combats continuent : touche un joueur pour regarder.</em>` : "");
-          setTimeout(() => { if (root) $("#ar-banner").hidden = true; }, 2200); drawTop(); drawShop(); drawItems();
-          if (G.duo) { const mate = G.players.find(q => q.team === G.me.team && q !== G.me), pf = mate && G.fights.find(x => x !== f && !x.done && (x.a === mate || x.b === mate)); if (pf) { if (f.res.w) note("🤝 Tes survivants partent en renfort chez " + mate.name + " !"); setTimeout(() => { if (root && G && G.fights && !pf.done && UI.view === f) watch(pf); }, 1300); } } }
+          b.innerHTML = (f.res.w ? `Victoire !<small>+${G.me.gold - g0} 🪙</small>` : `Défaite<small>−${f.res.d} PV</small>`) + (f.res.it && f.res.it.length || f.res.pick ? `<small class="ar-loot">Butin : ${(f.res.it || []).map(id => ITEM[id].ic).join(" ")}${f.res.pick ? " + 1 au choix 🎁" : ""}</small>` : "") + "";
+          setTimeout(() => { if (root) $("#ar-banner").hidden = true; }, 1500); drawTop(); drawShop(); drawItems();
+          if (G.duo) { const mate = G.players.find(q => q.team === G.me.team && q !== G.me), pf = mate && G.fights.find(x => x !== f && !x.done && (x.a === mate || x.b === mate)); if (pf) { setTimeout(() => { if (root && G && G.fights && !pf.done && UI.view === f) watch(pf); }, 1300); } } }
         drawPlayers(); } }
     const S = UI.sim; if (S) { if (Math.round(S.t * 10) % 5 === 0) drawDmg();
       for (const u of S.units) { const el = UI.tok[u.uid]; if (!el || !u.alive) continue; { const R = UI.flip ? 7 - u.R : u.R, C = UI.flip ? 6 - u.C : u.C; el.style.left = ((C + (R & 1) * .5) / 7.5 * 100) + "%"; el.style.top = (R * .75 / 6.25 * 100) + "%"; }

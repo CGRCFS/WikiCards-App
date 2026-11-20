@@ -557,3 +557,13 @@ body.ar-open{overflow:hidden}
 @keyframes arflv{0%{opacity:.55}100%{opacity:0}}
 #arena.spec .ar-shopbar,#arena.spec .ar-bench,#arena.spec .ar-items{display:none}
 #arena.spec .ar-center::after{content:"👁 Mode spectateur : touche un joueur pour voir son combat ou son équipe.";display:block;text-align:center;padding:10px;font-weight:600;color:#9ee7f0}
+
+/* ----- indications de spectateur plus discrètes ----- */
+.ar-view{top:auto;bottom:-4%;left:auto;right:-5%;transform:none;background:#06161c99;border-color:#39d5d066;padding:2px 4px 2px 10px;font-size:11px;gap:6px;opacity:.85}
+.ar-view .ar-b{padding:2px 8px;font-size:11px;background:#0e2730cc;border-color:#39d5d066;font-weight:500}
+.ar-pl.view{box-shadow:0 0 0 1px #39d5d0}
+#arena.spec .ar-center::after{content:"👁 spectateur";padding:4px;font-size:11px;font-weight:500;opacity:.55}
+.ar-fx.sudden{font-size:16px;opacity:.9}
+.ar-banner:not(.bossb){padding:8px 20px;font-size:20px;top:12%;background:#000a;border-width:1px}
+.ar-banner:not(.bossb) small{font-size:13px}
+@media (max-width:900px){.ar-view{right:0;bottom:-3%;font-size:10px}.ar-banner:not(.bossb){font-size:17px;padding:6px 14px}}
