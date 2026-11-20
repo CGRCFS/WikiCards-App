@@ -807,7 +807,7 @@
       <p><b>Boss :</b> la dernière manche de chaque acte (💀) est un boss : un facile, deux moyens puis un boss final, différents à chaque partie. Sa fiche s'affiche pendant la préparation.</p>
       <p><b>Améliorations :</b> aux manches 2-1, 3-2 et 4-2, tu choisis un bonus parmi trois, valable jusqu'à la fin de la partie.</p>
       <p><b>Butin :</b> après les monstres et les boss, tu choisis un objet parmi trois.</p>
-      <p><b>Fragments :</b> une partie d'au moins 10 manches rapporte des fragments selon ta place (40 pour la victoire), dans la limite du plafond du jour.</p>
+      <p><b>Fragments :</b> une partie d'au moins 10 manches rapporte des fragments selon ta place : 250 pour la victoire, puis 170, 120, 90, 60, 40, 25 et 15 (en duo : 250, 150, 80, 40 par équipe), jusqu'à 600 par jour.</p>
       <p><b>Duo :</b> deux joueurs partagent les mêmes PV. Chacun mène son combat ; si tu gagnes le tien, tes survivants partent en renfort chez ton coéquipier. Tu peux aussi lui donner une unité par manche (bouton 🎁 sur sa fiche).</p>
       <p><b>Mort subite :</b> après 30 s de combat, les dégâts augmentent et les soins diminuent jusqu'à ce qu'un camp tombe.</p>
       <h3>Synergies</h3>${Object.keys(TR).map(k => `<p>${TICO(k)} <b>${TNAME(k)}</b> (${TR[k].t.join(" / ")}) : ${TR[k].t.map((t, i) => TR[k].d(TR[k].v[i])).slice(-1)[0].replace(/\d+(\.\d+)?/g, m => m)}</p>`).join("")}
