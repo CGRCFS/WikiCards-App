@@ -670,9 +670,9 @@
         if (a.dataset.act === "mpcreate") { const inv = [...root.querySelectorAll(".ar-fr input:checked")].map(i => i.value).slice(0, 7); MP.room = await rpc("room_create", { p_game: "arena", p_invite: inv, p_settings: {} }); return mpRoom(); }
       } catch (err) { note(err.message); } };
   }
-  const evOpts = sel => `<option value="">Aucun</option><option value="hasard" ${sel === "hasard" ? "selected" : ""}>🎲 Au hasard</option>` + Object.keys(EVENTS).map(k => `<option value="${k}" ${sel === k ? "selected" : ""}>${EVENTS[k][0]} ${EVENTS[k][1]}</option>`).join("");
+  const evOpts = sel => `<option value="">Aucun</option><option value="hasard" ${sel === "hasard" ? "selected" : ""}>🎲 Au hasard (toujours un événement)</option><option value="surprise" ${sel === "surprise" ? "selected" : ""}>❓ Surprise (un événement ou aucun)</option>` + Object.keys(EVENTS).map(k => `<option value="${k}" ${sel === k ? "selected" : ""}>${EVENTS[k][0]} ${EVENTS[k][1]}</option>`).join("");
   const pickSet = v => v === "alea" ? (Math.random() < .5 ? 1 : 2) : ({ 1: 1, 2: 2 })[v] || "mix";
-  const pickEvent = v => v === "hasard" ? Object.keys(EVENTS)[Math.floor(Math.random() * Object.keys(EVENTS).length)] : EVENTS[v] ? v : null;
+  const pickEvent = v => v === "surprise" && Math.random() < .25 ? null : v === "hasard" || v === "surprise" ? Object.keys(EVENTS)[Math.floor(Math.random() * Object.keys(EVENTS).length)] : EVENTS[v] ? v : null;
   function mpRoom() { MP.sig = null; MP.gid = null; root.innerHTML = `<div class="ar-menu"><h1>⚔️ Salon</h1><div id="ar-room"><p>Connexion…</p></div></div>`;
     root.onclick = async e => { const a = e.target.closest("[data-act]"); if (!a) return;
       try { if (a.dataset.act === "mpquit") { await mpLeave(); return menu(); }
@@ -694,7 +694,7 @@
   function mpBegin(s) {
     MP.gid = s.gid; MP.sent = -1; const c = s.cfg || {}, order = s.order || [], me = order.indexOf(API.uid);
     music("main"); newGame(c.diff || "normal", (c.seed | 0) || 1, { event: c.event, humans: order.map(u => ({ uid: u, name: u === API.uid ? "Toi" : API.name(u) })), me, bots: c.bots !== false, duo: !!c.duo, set: c.set }); MP.gifts = [];
-    UI.speed = 1; build(); if (G.event) evBanner(); note("Cartes : " + SETN[G.set] + (G.duo ? " · mode duo" : ""));
+    UI.speed = 1; build(); if (G.event) evBanner(); note("Cartes : " + SETN[G.set] + (G.duo ? " · mode duo" : "") + (G.event ? "" : " · pas d'événement"));
   }
   // « Prêt » : j'envoie mon plateau (l'hôte envoie aussi ceux des bots et les PV de tout le monde)
   async function mpReady() {
@@ -749,7 +749,7 @@
       <div class="ar-row"><button class="ar-b" data-act="help">Règles</button><button class="ar-b" data-act="quit">Quitter</button></div></div>`;
     root.onclick = e => { const d = e.target.closest("[data-diff]"); if (d) { root.querySelectorAll("[data-diff]").forEach(b => b.classList.toggle("on", b === d)); return; }
       const a = e.target.closest("[data-act]"); if (!a) return; if (a.dataset.act === "quit") return close(); if (a.dataset.act === "help") return help(); if (a.dataset.act === "multi") return mpLobby();
-      if (a.dataset.act === "start") { music("main"); newGame((root.querySelector("[data-diff].on") || {}).dataset.diff || "normal", 0, { event: pickEvent(root.querySelector("#ar-ev").value), duo: root.querySelector("#ar-mode").value === "duo", set: pickSet(root.querySelector("#ar-set").value) }); build(); if (root.querySelector("#ar-set") == null) note("Cartes : " + SETN[G.set]); if (G.event) evBanner(); } };
+      if (a.dataset.act === "start") { music("main"); newGame((root.querySelector("[data-diff].on") || {}).dataset.diff || "normal", 0, { event: pickEvent(root.querySelector("#ar-ev").value), duo: root.querySelector("#ar-mode").value === "duo", set: pickSet(root.querySelector("#ar-set").value) }); build(); note("Cartes : " + SETN[G.set] + (G.event ? "" : " · pas d'événement")); if (G.event) evBanner(); } };
   }
   function help() {
     const m = document.createElement("div"); m.className = "ar-modal"; m.innerHTML = `<div class="ar-sheet"><h2>Règles</h2>
