@@ -807,7 +807,7 @@
       <p><b>Boss :</b> la dernière manche de chaque acte (💀) est un boss : un facile, deux moyens puis un boss final, différents à chaque partie. Sa fiche s'affiche pendant la préparation.</p>
       <p><b>Améliorations :</b> aux manches 2-1, 3-2 et 4-2, tu choisis un bonus parmi trois, valable jusqu'à la fin de la partie.</p>
       <p><b>Butin :</b> après les monstres et les boss, tu choisis un objet parmi trois.</p>
-      <p><b>Fragments :</b> une partie d'au moins 10 manches rapporte des fragments selon ta place : 250 pour la victoire, puis 170, 120, 90, 60, 40, 25 et 15 (en duo : 250, 150, 80, 40 par équipe), jusqu'à 600 par jour.</p>
+      <p><b>Fragments :</b> une partie d'au moins 10 manches rapporte des fragments. La victoire vaut 250 contre des bots faciles, 500 normaux, 750 difficiles, et 1000 s'il y a d'autres joueurs en face ; les autres places en touchent une part (68 %, 48 %, 36 %… ; en duo 60 %, 32 %, 16 %).</p>
       <p><b>Duo :</b> deux joueurs partagent les mêmes PV. Chacun mène son combat ; si tu gagnes le tien, tes survivants partent en renfort chez ton coéquipier. Tu peux aussi lui donner une unité par manche (bouton 🎁 sur sa fiche).</p>
       <p><b>Mort subite :</b> après 30 s de combat, les dégâts augmentent et les soins diminuent jusqu'à ce qu'un camp tombe.</p>
       <h3>Synergies</h3>${Object.keys(TR).map(k => `<p>${TICO(k)} <b>${TNAME(k)}</b> (${TR[k].t.join(" / ")}) : ${TR[k].t.map((t, i) => TR[k].d(TR[k].v[i])).slice(-1)[0].replace(/\d+(\.\d+)?/g, m => m)}</p>`).join("")}
@@ -962,9 +962,9 @@
   /* ---------- fin de partie : enregistrement, fragments ---------- */
   async function logGame() {
     if (!G || G.logged || !API || !API.rpc) return; G.logged = true; clearSave(); const L = (G.me.place === 1 ? G.me.board : G.lastBoard || []).slice(0, 12).map(x => ({ n: x.n, s: x.star, it: x.it || [] }));
-    try { const r = await rpc("ar_log", { p: { mode: G.duo ? "duo" : "solo", set: String(G.set), mp: !!G.mp, diff: G.diff, event: G.event, place: G.duo ? Math.ceil(G.me.place / 2) : G.me.place, n: G.duo ? 4 : G.n, rounds: G.ri, board: L } });
+    try { const r = await rpc("ar_log", { p: { mode: G.duo ? "duo" : "solo", set: String(G.set), mp: !!G.mp, diff: G.diff, humans: G.players.filter(q => !q.bot && q !== G.me && q.team !== G.me.team).length, event: G.event, place: G.duo ? Math.ceil(G.me.place / 2) : G.me.place, n: G.duo ? 4 : G.n, rounds: G.ri, board: L } });
       const el = root && root.querySelector("#ar-rew"); if (r && r.frag > 0 && API.addFrag) API.addFrag(r.frag);
-      G.rewTxt = r && r.frag > 0 ? `+${r.frag} fragments ✦` : G.ri < 10 ? "Pas de fragments : il faut jouer au moins 10 manches." : r && r.left === 0 ? "Plafond de fragments du jour atteint." : "Pas de fragments pour cette place."; const el2 = root && root.querySelector("#ar-rew"); if (el2) el2.textContent = G.rewTxt; if (false) el.textContent = r && r.frag > 0 ? `+${r.frag} fragments ✦` : G.ri < 10 ? "Pas de fragments : il faut jouer au moins 10 manches." : r && r.left === 0 ? "Plafond de fragments du jour atteint." : "Pas de fragments pour cette place."; } catch (_) {}
+      G.rewTxt = r && r.frag > 0 ? `+${r.frag} fragments ✦` : G.ri < 10 ? "Pas de fragments : il faut jouer au moins 10 manches." : "Pas de fragments : une seule partie récompensée toutes les 5 minutes."; const el2 = root && root.querySelector("#ar-rew"); if (el2) el2.textContent = G.rewTxt; if (false) el.textContent = r && r.frag > 0 ? `+${r.frag} fragments ✦` : G.ri < 10 ? "Pas de fragments : il faut jouer au moins 10 manches." : r && r.left === 0 ? "Plafond de fragments du jour atteint." : "Pas de fragments pour cette place."; } catch (_) {}
   }
   /* ---------- classement et statistiques ---------- */
   async function boardScreen() {
