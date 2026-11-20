@@ -93,10 +93,85 @@
   U("MrBeast", 5, "sou", ["vid"], { k: "heal", who: "all", p: .7, sh: .5, pas: "goldwin", n: "Giveaway", t: "Soigne et protège toute l'équipe. Passif : +2 or si tu gagnes le combat." });
   const SET = Object.keys(UN);
   // monstres neutres : [nom, PV, dégâts, vitesse]
-  const MON = { Dodo: [260, 22, .6], Capybara: [340, 26, .6], Loup: [380, 36, .8], Oie: [520, 48, .9], Sanglier: [900, 70, .7], "Ours brun": [1500, 95, .65] };
-  const PVE = [[["Dodo", 2]], [["Capybara", 3]], [["Loup", 3]], [["Oie", 4]], [["Sanglier", 3]], [["Ours brun", 2], ["Loup", 2]], [["Ours brun", 3], ["Sanglier", 2]]];
+  const MON = { Dodo: [170, 14, .6], Capybara: [230, 18, .6], Loup: [300, 26, .8], Oie: [520, 48, .9], Sanglier: [900, 70, .7], "Ours brun": [1500, 95, .65] };
+  const PVE = [[["Dodo", 2]], [["Capybara", 3]], [["Loup", 3]]];
+  // boss : t = palier (1 facile, 2 moyen, 3 final). Un facile, deux moyens et un final sont tirés au sort à chaque partie.
+  const BOSS = {
+    "Obélix": { t: 1, hp: 4800, ad: 120, as: .7, ar: 40, adds: [["Sanglier", 2]], s: { k: "aoeS", p: 1.1, r: 1, stun: 1, pas: "ramp", n: "Baffe" }, d: "Ses baffes étourdissent tout ce qui l'entoure, et plus il est blessé, plus il frappe fort. Deux sangliers l'accompagnent." },
+    "Bigfoot": { t: 1, hp: 5600, ad: 110, as: .65, ar: 45, adds: [["Ours brun", 1]], s: { k: "aoeT", p: 1, r: 1, stun: 1.5, n: "Piétinement" }, d: "Piétine une zone et étourdit. Un ours brun le suit." },
+    "Bête du Gévaudan": { t: 1, hp: 4200, ad: 125, as: .9, ar: 30, ex: { ls: .2 }, adds: [["Loup", 3]], s: { k: "strike", p: 1.4, tp: "low", n: "Embuscade" }, d: "Bondit sur ton unité la plus faible et se soigne en mordant. Trois loups chassent avec elle." },
+    "Wendigo": { t: 1, hp: 5600, ad: 120, as: .75, ar: 35, s: { k: "stunall", p: .5, stun: [1, 1, 1], pas: "enrage", n: "Hurlement" }, d: "Son hurlement étourdit toute ton équipe. Dès qu'il est blessé, il s'enrage." },
+    "Monstre du loch Ness": { t: 2, hp: 8800, ad: 135, as: .7, ar: 55, ex: { regen: .008 }, s: { k: "aoeT", p: 1.2, r: 2, stun: 1, untarg: 1.5, n: "Raz-de-marée" }, d: "Un raz-de-marée frappe une large zone, puis il plonge et devient inciblable. Il se régénère en continu." },
+    "Hollandais volant": { t: 2, hp: 12500, ad: 150, as: .7, ar: 45, rg: 4, s: { k: "summon", cnt: [3, 3, 3], hp: 800, ad: 60, sn: "Matelot maudit", n: "Équipage maudit" }, d: "Tire de loin et appelle sans cesse des matelots maudits. Tue-le vite." },
+    "Kurama": { t: 2, hp: 11500, ad: 150, as: .75, ar: 50, s: { k: "line", p: 1.8, pas: "ramp", n: "Bijūdama" }, d: "Son orbe traverse toute une ligne : ne mets pas tes unités en file. Plus il est blessé, plus il frappe fort." },
+    "Ketheric Thorm": { t: 2, hp: 7200, ad: 130, as: .7, ar: 60, s: { k: "multi", cnt: 3, p: 1.1, drain: 1, pas: "revive", n: "Drain nécrotique" }, d: "Draine la vie de trois unités à la fois et se relève une fois après sa mort." },
+    "Flowey": { t: 2, hp: 9500, ad: 130, as: .9, ar: 40, rg: 4, ex: { dodge: .2 }, s: { k: "multi", cnt: 5, rndT: 1, p: .8, n: "Pétales" }, d: "Mitraille cinq unités au hasard et esquive une attaque sur cinq." },
+    "Ender Dragon": { t: 3, hp: 17000, ad: 180, as: .75, ar: 60, rg: 2, ex: { regen: .01 }, s: { k: "line", p: 1.4, dot: 2, d: 4, n: "Souffle du dragon" }, d: "Son souffle traverse une ligne et brûle pendant 4 s. Ses cristaux le soignent en continu : il faut beaucoup de dégâts." },
+    "Fatalis": { t: 3, hp: 17500, ad: 185, as: .7, ar: 70, s: { k: "stunall", p: 1.1, stun: [.8, .8, .8], n: "Brasier" }, d: "Embrase tout le plateau : toute ton équipe est blessée et étourdie. Les soins et les boucliers d'équipe sont précieux." },
+    "Seigneur de la Lune": { t: 3, hp: 17000, ad: 175, as: .75, ar: 55, rg: 4, s: { k: "summon", cnt: [2, 2, 2], hp: 1500, ad: 90, sn: "Œil véritable", n: "Yeux véritables" }, d: "Frappe de loin et invoque des yeux véritables très résistants." },
+    "SCP-682": { t: 3, hp: 16000, ad: 180, as: .8, ar: 65, ex: { regen: .015 }, s: { k: "strike", p: 1.8, pas: "revive", n: "Adaptation" }, d: "Indestructible : il se régénère très vite et se relève une fois. Les brûlures et l'anti-soin aident énormément." },
+  };
+  // objets : 8 composants, 36 fusions
+  const COMP = {
+    hache: { n: "Hache", ic: "🪓", st: { ad: .15 }, d: "+15 % de dégâts d'attaque" },
+    briquet: { n: "Briquet", ic: "🔥", st: { as: .12 }, d: "+12 % de vitesse d'attaque" },
+    usb: { n: "Clé USB", ic: "💾", st: { sp: .2 }, d: "+20 % de puissance des sorts" },
+    airpods: { n: "AirPods", ic: "🎧", st: { mana: 15 }, d: "commence avec 15 mana" },
+    savon: { n: "Savon", ic: "🧼", st: { ar: 25 }, d: "+25 d'armure" },
+    scotch: { n: "Scotch", ic: "🩹", st: { mr: 25 }, d: "+25 de résistance magique" },
+    pain: { n: "Pain au chocolat", ic: "🥐", st: { hp: 180 }, d: "+180 PV" },
+    de: { n: "Dé", ic: "🎲", st: { crit: .15 }, d: "+15 % de chance de critique" },
+  };
+  const CK = Object.keys(COMP), ITEM = {}, FUS = {};
+  CK.forEach(k => ITEM[k] = Object.assign({ id: k }, COMP[k]));
+  const F = (a, b, id, n, ic, t, tip) => { ITEM[id] = { id, n, ic, mk: [a, b], t, tip, st: {} }; [a, b].forEach(c => Object.keys(COMP[c].st).forEach(k => ITEM[id].st[k] = (ITEM[id].st[k] || 0) + COMP[c].st[k])); FUS[[a, b].sort().join("+")] = id; };
+  F("hache", "hache", "opinel", "Opinel", "🔪", "Ses attaques ignorent 30 % de l'armure.", "Assassins et Bagarreurs, contre les Colosses.");
+  F("hache", "briquet", "spinner", "Hand spinner", "🌀", "Chaque attaque donne +4 % de vitesse d'attaque (15 fois max).", "Tireurs : plus le combat dure, plus ils mitraillent.");
+  F("hache", "usb", "tournevis", "Tournevis", "🪛", "Se soigne de 15 % de tous les dégâts qu'il inflige.", "Bagarreurs et Mages qui tapent en zone.");
+  F("hache", "airpods", "pelle", "Pelle", "⛏️", "Chaque attaque rend 6 mana de plus.", "Unités qui attaquent vite et dont le sort est décisif.");
+  F("hache", "savon", "poele", "Poêle", "🍳", "25 % des dégâts d'attaque touchent aussi les ennemis voisins de la cible.", "Unités de mêlée en première ligne.");
+  F("hache", "scotch", "fourchette", "Fourchette", "🍴", "Ses coups réduisent de moitié les soins reçus par la cible pendant 4 s.", "Indispensable contre les équipes qui se soignent et les boss qui se régénèrent.");
+  F("hache", "pain", "marteau", "Marteau", "🔨", "Chaque attaque inflige en plus 2 % de ses propres PV max.", "Colosses : ils deviennent enfin dangereux.");
+  F("hache", "de", "ciseaux", "Ciseaux", "✂️", "+35 % de dégâts critiques.", "Assassins, surtout avec la synergie Assassin.");
+  F("briquet", "briquet", "ventilo", "Ventilateur", "🌬️", "+1 case de portée.", "Tireurs et Mages : ils restent hors de danger.");
+  F("briquet", "usb", "allumette", "Allumette", "🧨", "Ses attaques et ses sorts brûlent la cible : 2 % de ses PV max par seconde pendant 4 s.", "Sorts de zone, et contre les boss.");
+  F("briquet", "airpods", "chargeur", "Chargeur", "🔌", "Chaque sort lancé donne +20 % de vitesse d'attaque (5 fois max).", "Unités dont le sort coûte peu de mana.");
+  F("briquet", "savon", "extincteur", "Extincteur", "🧯", "Les ennemis adjacents attaquent 25 % moins vite.", "Colosses au milieu de la mêlée.");
+  F("briquet", "scotch", "elastique", "Élastique", "🪀", "+20 % d'esquive.", "N'importe quelle unité de première ligne.");
+  F("briquet", "pain", "gourde", "Gourde", "🧃", "Régénère 2 % de ses PV max chaque seconde.", "Colosses avec beaucoup de PV.");
+  F("briquet", "de", "lancepierre", "Lance-pierre", "🪃", "25 % de chance d'attaquer deux fois d'un coup.", "Tireurs et Assassins.");
+  F("usb", "usb", "calculatrice", "Calculatrice", "🧮", "+35 % de puissance des sorts en plus (75 % au total).", "Ton meilleur Mage.");
+  F("usb", "airpods", "telecommande", "Télécommande", "📺", "Après chaque sort, récupère aussitôt 20 mana.", "Mages et Soutiens : ils enchaînent leurs sorts.");
+  F("usb", "savon", "parapluie", "Parapluie", "☂️", "Commence le combat avec un bouclier égal à 25 % de ses PV max.", "Unités fragiles visées par les Assassins.");
+  F("usb", "scotch", "tippex", "Tipp-Ex", "🧴", "Efface les étourdissements : il ne peut pas être étourdi.", "Ton porteur principal, contre Gojo, Kane, Fatalis ou le Wendigo.");
+  F("usb", "pain", "banane", "Banane", "🍌", "Toutes les 4 s, soigne l'allié le plus blessé.", "Soutiens, ou un Colosse qui reste longtemps en vie.");
+  F("usb", "de", "loupe", "Loupe", "🔍", "Ses sorts peuvent faire des coups critiques.", "Mages et Assassins à gros sort.");
+  F("airpods", "airpods", "enceinte", "Enceinte Bluetooth", "🔊", "Au début du combat, les alliés adjacents gagnent 15 mana.", "Place le porteur au milieu de tes lanceurs de sorts.");
+  F("airpods", "savon", "bouillotte", "Bouillotte", "♨️", "Gagne 5 mana de plus à chaque coup reçu.", "Colosses à sort de contrôle (Kane, Mario, de Gaulle).");
+  F("airpods", "scotch", "bouchons", "Bouchons d'oreille", "🦻", "Subit 30 % de dégâts magiques en moins.", "Contre les équipes de Mages.");
+  F("airpods", "pain", "thermos", "Thermos", "🍵", "Se soigne de 10 % de ses PV max à chaque sort lancé.", "Colosses et Bagarreurs qui lancent souvent.");
+  F("airpods", "de", "cartes", "Jeu de cartes", "🃏", "Chaque sort lancé donne +10 % de dégâts jusqu'à la fin du combat.", "Unités qui lancent beaucoup de sorts.");
+  F("savon", "savon", "couvercle", "Couvercle de poubelle", "🗑️", "Bloque 15 dégâts sur chaque attaque reçue.", "Contre les unités qui frappent vite et pas fort.");
+  F("savon", "scotch", "wd40", "WD-40", "🛢️", "Tout glisse sur lui : −15 % de dégâts subis.", "Ton Colosse principal.");
+  F("savon", "pain", "soutif", "Soutien-gorge", "👙", "Soutient ses voisins : les alliés adjacents gagnent 20 d'armure et de résistance magique.", "Un Colosse entouré d'alliés.");
+  F("savon", "de", "cactus", "Cactus", "🌵", "Renvoie 25 % des dégâts des attaques qu'il reçoit.", "Colosses, contre les Assassins et les Tireurs.");
+  F("scotch", "scotch", "bulle", "Papier bulle", "🫧", "Commence le combat avec un bouclier de 300.", "Unités fragiles.");
+  F("scotch", "pain", "doudou", "Doudou", "🧸", "Une fois par combat, revient à la vie avec 30 % de ses PV.", "Ton unité la plus importante.");
+  F("scotch", "de", "ventouse", "Ventouse", "🪠", "Chaque attaque retire 5 d'armure et de résistance magique à la cible (8 fois max).", "Unités qui attaquent vite, contre les boss.");
+  F("pain", "pain", "raclette", "Raclette", "🧀", "+300 PV en plus (660 au total).", "N'importe quel Colosse.");
+  F("pain", "de", "ticket", "Ticket à gratter", "🎫", "Gagne 1 or par élimination (2 max par combat).", "Tôt dans la partie, sur l'unité qui achève les ennemis.");
+  F("de", "de", "des", "Paire de dés", "🎲", "+15 % de chance de critique en plus (45 % au total).", "Assassins et Tireurs.");
+  const isComp = id => !!COMP[id];
+  // pose un objet sur une unité : deux composants fusionnent ; 3 objets max
+  function equip(x, id) {
+    x.it = x.it || [];
+    if (isComp(id)) { const j = x.it.findIndex(isComp); if (j >= 0) { const f = FUS[[x.it[j], id].sort().join("+")]; x.it[j] = f; return f; } }
+    if (x.it.length >= 3) return null; x.it.push(id); return id;
+  }
+  function giveItems(p, nc, nf) { const got = []; for (let i = 0; i < nc; i++) got.push(CK[Math.floor(G.rng() * CK.length)]); const FK = Object.keys(ITEM).filter(k => !isComp(k)); for (let i = 0; i < nf; i++) got.push(FK[Math.floor(G.rng() * FK.length)]); p.items.push(...got); return got; }
+  function takeItems(p, x) { if (x.it && x.it.length) { p.items.push(...x.it); x.it = []; } }
   const ODDS = [[100, 0, 0, 0, 0], [100, 0, 0, 0, 0], [75, 25, 0, 0, 0], [55, 30, 15, 0, 0], [45, 33, 20, 2, 0], [30, 40, 25, 5, 0], [19, 30, 40, 10, 1], [17, 24, 32, 24, 3], [15, 18, 25, 30, 12]];
-  const XPN = [2, 2, 6, 10, 20, 36, 56, 80], POOLN = [22, 20, 17, 10, 9], STAGEDMG = [0, 0, 2, 4, 6, 9, 13, 18, 25, 35];
+  const XPN = [2, 2, 6, 10, 20, 36, 56, 80], POOLN = [22, 20, 17, 10, 9], STAGEDMG = [0, 0, 2, 3, 5, 7, 10, 15, 20, 30];
   const BOTN = ["Kévin", "Josiane", "Gégé", "Mamie Lucette", "Dylan", "Brigitte", "Roger", "Cindy"];
 
   /* ---------- outils ---------- */
@@ -113,9 +188,13 @@
   function mkUnit(S, side, x) {
     const u = { uid: S.units.length, side, n: x.n, star: x.star || 1, alive: true, buffs: [], dots: [], shield: 0, stunT: 0, untargT: 0, dodgeT: 0, atkCd: .4 + S.rng() * .4, moveCd: 0, mana: 0, kills: 0,
       ref: x.ref || null, dealt: 0, taken: 0, healed: 0, critC: .25, critD: 1.4, dodge: 0, ls: 0, amp: 1, red: 0, sp: 1, manaAtk: 0, regen: 0, vuln: 0, vulnT: 0 };
-    if (x.raw) Object.assign(u, { cost: 1, cl: "bag", o: [], maxhp: x.raw.hp, ad: x.raw.ad, as: x.raw.as, range: x.raw.rg || 1, armor: x.raw.ar || 15, mr: x.raw.ar || 15, maxMana: 0, spell: null, mon: 1, art: x.raw.art });
+    if (x.raw) Object.assign(u, { cost: x.raw.cost || 1, cl: "bag", o: [], maxhp: x.raw.hp, ad: x.raw.ad, as: x.raw.as, range: x.raw.rg || 1, armor: x.raw.ar || 15, mr: x.raw.ar || 15, maxMana: x.raw.spell ? x.raw.m || 100 : 0, spell: x.raw.spell || null, mon: 1, boss: x.raw.boss || 0, art: x.raw.art }, x.raw.ex || {});
     else { const d = UN[x.n], b = CB[d.cl], st = STAR[u.star - 1];
       Object.assign(u, { cost: d.c, cl: d.cl, o: d.o, maxhp: HPB[d.c - 1] * b.hp * st, ad: ADB[d.c - 1] * b.ad * st, as: b.as, range: b.rg, armor: b.ar, mr: b.ar, maxMana: d.s.m || b.m, spell: d.s }); }
+    u.items = (x.it || []).slice(); u.it = {};
+    u.items.forEach(id => { const I = ITEM[id], st = I.st; u.it[id] = 1; if (st.ad) u.ad *= 1 + st.ad; if (st.as) u.as *= 1 + st.as; if (st.sp) u.sp += st.sp; if (st.mana) u.mana += st.mana; if (st.ar) u.armor += st.ar; if (st.mr) u.mr += st.mr; if (st.hp) u.maxhp += st.hp; if (st.crit) u.critC += st.crit; });
+    const I = u.it; if (I.opinel) u.pen = .3; if (I.tournevis) u.ls += .15; if (I.pelle) u.manaAtk += 6; if (I.ciseaux) u.critD += .35; if (I.ventilo) u.range += 1; if (I.elastique) u.dodge += .2; if (I.gourde) u.regen += .02;
+    if (I.calculatrice) u.sp += .35; if (I.wd40) u.red += .15; if (I.raclette) u.maxhp += 300; if (I.des) u.critC += .15; if (I.doudou) u.doudou = true; if (I.banane) u.banT = 4;
     u.R = side ? 3 - x.r : 4 + x.r; u.C = side ? 6 - x.c : x.c;
     return u;
   }
@@ -142,7 +221,10 @@
         else if (k === "sou") mine.forEach(u => u.red += v[0] / 100);
         else if (k === "str") mine.forEach(u => u.amp += v[0] / 100);
       }); });
+    S.units.forEach(u => { const I = u.it; if (I.parapluie) u.shield += u.maxhp * .25; if (I.bulle) u.shield += 300; if (u.maxMana) u.mana = Math.min(u.maxMana - 1, u.mana);
+      if (I.enceinte || I.soutif) S.units.forEach(a => { if (a !== u && a.side === u.side && dist(a, u) <= 1) { if (I.enceinte && a.maxMana) a.mana = Math.min(a.maxMana - 1, a.mana + 15); if (I.soutif) { a.armor += 20; a.mr += 20; } } }); });
     S.units.forEach(u => { u.hp = u.maxhp; if (u.spell && u.spell.pas === "revive") u.revive = true; if (u.spell && u.spell.pas === "goldwin") S.goldWin[u.side] += 2; });
+    S.exti = [0, 1].map(sd => S.units.some(u => u.side === sd && u.it.extincteur));
     S.units.forEach(u => { if (u.cl === "ass" && !u.mon) u.waitT = .55; });   // les assassins bondissent juste après le début du combat
     return S;
   }
@@ -157,20 +239,22 @@
   const bsum = (S, u, s) => { let v = 0; for (const b of u.buffs) if (b.s === s && b.until > S.t) v += b.v; return v; };
   const foesOf = (S, u) => S.units.filter(e => e.alive && e.side !== u.side), alliesOf = (S, u) => S.units.filter(e => e.alive && e.side === u.side);
   const targetable = (S, e) => e.alive && e.untargT <= S.t;
-  function heal(S, u, v, quiet, by) { if (!u.alive || v <= 0) return; if (S.t > 30) v *= .4; const h = Math.min(v, u.maxhp - u.hp); u.hp += h; const hb = by || u; (hb.owner || hb).healed += h; if (!quiet && h > 1) S.ev.push({ k: "heal", u: u.uid, v: Math.round(h) }); }
+  function heal(S, u, v, quiet, by) { if (!u.alive || v <= 0) return; if (S.t > 30) v *= .4; if (u.ahT > S.t) v *= .5; const h = Math.min(v, u.maxhp - u.hp); u.hp += h; const hb = by || u; (hb.owner || hb).healed += h; if (!quiet && h > 1) S.ev.push({ k: "heal", u: u.uid, v: Math.round(h) }); }
   function dmg(S, src, t, amt, type, o) {
     o = o || {}; if (!t.alive || amt <= 0) return 0;
     if (src) amt *= src.amp + bsum(S, src, "amp"); if (S.t > 30) amt *= 1 + (S.t - 30) * .12; if (src && bsum(S, src, "weak")) amt *= Math.max(.2, 1 - bsum(S, src, "weak"));
-    const res = type === "p" ? t.armor + bsum(S, t, "armor") : type === "m" ? t.mr + bsum(S, t, "armor") : 0;
-    amt *= 100 / (100 + Math.max(0, res)); amt *= 1 - Math.min(.6, t.red); if (t.vulnT > S.t) amt *= 1 + t.vuln;
+    let res = Math.max(0, type === "p" ? t.armor + bsum(S, t, "armor") : type === "m" ? t.mr + bsum(S, t, "armor") : 0); if (type === "p" && src && src.pen) res *= 1 - src.pen;
+    amt *= 100 / (100 + res); if (type === "m" && t.it.bouchons) amt *= .7; if (o.atk && t.it.couvercle) amt = Math.max(amt * .3, amt - 15); amt *= 1 - Math.min(.6, t.red); if (t.vulnT > S.t) amt *= 1 + t.vuln;
     let left = amt; if (t.shield > 0) { const a = Math.min(t.shield, left); t.shield -= a; left -= a; }
-    t.hp -= left; t.taken += amt; if (src) (src.owner || src).dealt += amt; if (!o.dot) { S.ev.push({ k: "dmg", u: t.uid, v: Math.round(amt), c: o.crit ? 1 : 0, m: type === "m" ? 1 : 0 }); if (t.maxMana) t.mana = Math.min(t.maxMana, t.mana + Math.min(12, amt * .04)); }
+    t.hp -= left; t.taken += amt; if (src) (src.owner || src).dealt += amt; if (!o.dot) { S.ev.push({ k: "dmg", u: t.uid, v: Math.round(amt), c: o.crit ? 1 : 0, m: type === "m" ? 1 : 0 }); if (t.maxMana) t.mana = Math.min(t.maxMana, t.mana + Math.min(12, amt * .04) + (t.it.bouillotte ? 5 : 0));
+      if (src && src.it.allumette) { t.burnT = S.t + 4; t.burnBy = src; } if (src && src.it.fourchette && o.atk) t.ahT = S.t + 4; if (o.atk && t.it.cactus && src && src.alive) dmg(S, t, src, amt * .25, "m", { dot: 1 }); }
     if (src && src.alive && src.ls) heal(S, src, amt * src.ls, true);
     if (t.spell && t.spell.pas === "enrage" && !t.enraged) { t.enraged = true; t.buffs.push({ s: "as", v: .45, until: 999 }, { s: "ad", v: .2, until: 999 }); S.ev.push({ k: "cast", u: t.uid, n: "Rage" }); }
     if (t.hp <= 0) {
-      if (t.revive) { t.revive = false; t.hp = t.maxhp * .25; t.stunT = S.t + .8; t.dots = []; S.ev.push({ k: "cast", u: t.uid, n: "Se relève !" }); }
+      if (t.revive) { t.revive = false; t.hp = t.maxhp * .25; t.stunT = S.t + .8; t.dots = []; t.burnT = 0; S.ev.push({ k: "cast", u: t.uid, n: "Se relève !" }); }
+      else if (t.doudou) { t.doudou = false; t.hp = t.maxhp * .3; t.dots = []; t.burnT = 0; S.ev.push({ k: "cast", u: t.uid, n: "🧸 Doudou !" }); }
       else { t.alive = false; t.hp = 0; delete S.grid[t.R + "," + t.C]; S.ev.push({ k: "die", u: t.uid });
-        if (src) { src.kills++; if (src.owner) src.owner.kills++; if (src.spell && src.spell.pas === "goldkill" && (src.gk || 0) < 2) { src.gk = (src.gk || 0) + 1; S.gold[src.side]++; S.ev.push({ k: "gold", u: src.uid }); } if (o.reset && src.alive) src.mana = src.maxMana; } }
+        if (src) { src.kills++; if (src.owner) src.owner.kills++; if (src.it.ticket && (src.tk || 0) < 2) { src.tk = (src.tk || 0) + 1; S.gold[src.side]++; S.ev.push({ k: "gold", u: src.uid }); } if (src.spell && src.spell.pas === "goldkill" && (src.gk || 0) < 2) { src.gk = (src.gk || 0) + 1; S.gold[src.side]++; S.ev.push({ k: "gold", u: src.uid }); } if (o.reset && src.alive) src.mana = src.maxMana; } }
     }
     return amt;
   }
@@ -178,10 +262,10 @@
   const within = (S, list, R, C, r) => list.filter(e => hd(e.R, e.C, R, C) <= r);
   function applyHit(S, u, e, sp, base) {
     const o = { reset: sp.reset };
-    let p = base; if (sp.rnd) p *= .4 + S.rng() * 1.7;
+    let p = base; if (sp.rnd) p *= .4 + S.rng() * 1.7; if (u.it.loupe && S.rng() < u.critC) { p *= u.critD; o.crit = 1; }
     if (sp.phys) dmg(S, u, e, p + u.ad * (1 + bsum(S, u, "ad")) * 1.2, "p", Object.assign(o, { crit: 1 })); else dmg(S, u, e, p, "m", o);
     if (!e.alive) return;
-    if (sp.stun) e.stunT = Math.max(e.stunT, S.t + (Array.isArray(sp.stun) ? sp.stun[u.star - 1] : sp.stun));
+    if (sp.stun && !e.it.tippex) e.stunT = Math.max(e.stunT, S.t + (Array.isArray(sp.stun) ? sp.stun[u.star - 1] : sp.stun) * (e.boss ? .4 : 1));
     if (sp.vuln) { e.vuln = sp.vuln; e.vulnT = S.t + sp.d; }
     if (sp.weaken) e.buffs.push({ s: "weak", v: sp.weaken, until: S.t + sp.d });
     if (sp.slow) e.buffs.push({ s: "as", v: -sp.slow, until: S.t + sp.d });
@@ -219,7 +303,7 @@
           const s = mkUnit(S, u.side, { n: sp.sn, raw, r: 0, c: 0 }); s.R = f[0]; s.C = f[1]; s.hp = s.maxhp; s.sum = 1; s.owner = u; s.amp = u.amp; S.grid[f[0] + "," + f[1]] = s; S.units.push(s); S.ev.push({ k: "spawn", u: s.uid }); } break; }
       case "transform": if (!u.tf) { u.tf = 1; const h = sp.hp * SSTAR[u.star - 1]; u.maxhp += h; u.hp += h; u.buffs.push({ s: "ad", v: sp.ad, until: 999 }); u.big = 1; } else heal(S, u, u.maxhp * .25); break;
       case "stunall": foes.forEach(e => applyHit(S, u, e, sp, SD(u, sp.p))); S.ev.push({ k: "flash", side: u.side }); break;
-      case "half": foes.slice().sort((a, b) => b.hp - a.hp).slice(0, sp.cnt).forEach(e => { dmg(S, u, e, e.hp * sp.pc[u.star - 1], "t"); S.ev.push({ k: "shot", a: u.uid, b: e.uid }); }); S.ev.push({ k: "flash", side: u.side }); break;
+      case "half": foes.slice().sort((a, b) => b.hp - a.hp).slice(0, sp.cnt).forEach(e => { dmg(S, u, e, e.hp * (e.boss ? .12 : sp.pc[u.star - 1]), "t"); S.ev.push({ k: "shot", a: u.uid, b: e.uid }); }); S.ev.push({ k: "flash", side: u.side }); break;
       case "dodge": u.dodgeT = S.t + sp.d; u.buffs.push({ s: "ad", v: sp.v * u.star, until: S.t + sp.d + 4 }); break;
       case "boom": u.shield += SD(u, sp.sh); S.delayed.push({ t: S.t + 3, fn: () => { if (!u.alive) return; within(S, foesOf(S, u), u.R, u.C, sp.r).forEach(e => dmg(S, u, e, SD(u, sp.p), "m")); S.ev.push({ k: "zone", R: u.R, C: u.C, r: sp.r, side: u.side }); } }); break;
     }
@@ -232,9 +316,12 @@
     for (let i = 0; i < S.units.length; i++) { const u = S.units[i]; if (!u.alive) continue;
       if (u.dots.length) { for (const d of u.dots) if (d.until > S.t && u.alive) dmg(S, d.src, u, d.dps * DT, "m", { dot: 1 }); u.dots = u.dots.filter(d => d.until > S.t); if (!u.alive) continue; }
       if (u.regen) heal(S, u, u.maxhp * u.regen * DT, true);
+      if (u.burnT > S.t) { dmg(S, u.burnBy, u, Math.min(u.maxhp * .02, 90) * DT, "t", { dot: 1 }); if (!u.alive) continue; }
+      if (u.banT && S.t >= u.banT) { u.banT = S.t + 4; const a = alliesOf(S, u).sort((a, b) => a.hp / a.maxhp - b.hp / b.maxhp)[0]; if (a) heal(S, a, 120 * u.sp * SSTAR[u.star - 1], false, u); }
       u.atkCd -= DT; u.moveCd -= DT;
       if (u.stunT > S.t || u.waitT > S.t) continue;
-      if (u.spell && u.maxMana && u.mana >= u.maxMana) { u.mana = 0; cast(S, u); continue; }
+      if (u.spell && u.maxMana && u.mana >= u.maxMana) { u.mana = u.it.telecommande ? 20 : 0; cast(S, u);
+        if (u.it.chargeur && (u.chg || 0) < 5) { u.chg = (u.chg || 0) + 1; u.as *= 1.2; } if (u.it.thermos) heal(S, u, u.maxhp * .1); if (u.it.cartes) u.amp += .1; continue; }
       let t = u.tgt; const foes = foesOf(S, u).filter(e => targetable(S, e));
       if (u.taunt && u.taunt.until > S.t && u.taunt.by.alive) t = u.taunt.by;
       else if (!t || !targetable(S, t)) { t = null; let bd = 99; for (const e of foes) { const d = dist(u, e) + S.rng() * .1; if (d < bd) { bd = d; t = e; } } }
@@ -251,28 +338,34 @@
       S.win = a && !b ? 0 : b && !a ? 1 : hp(0) > hp(1) ? 0 : hp(1) > hp(0) ? 1 : -1; S.left = [0, 1].map(s => S.units.filter(u => u.alive && u.side === s && !u.sum).length); }
   }
   function attack(S, u, t) {
-    u.atkCd = 1 / Math.min(3.5, Math.max(.2, u.as * (1 + bsum(S, u, "as"))));
+    let asv = u.as * (1 + bsum(S, u, "as")); if (S.exti[1 - u.side]) for (const e of S.units) if (e.alive && e.side !== u.side && e.it.extincteur && dist(e, u) <= 1) { asv *= .75; break; }
+    u.atkCd = 1 / Math.min(3.5, Math.max(.2, asv));
     S.ev.push({ k: u.range > 1 ? "shot" : "atk", a: u.uid, b: t.uid });
     if (t.dodgeT > S.t || S.rng() < t.dodge) { S.ev.push({ k: "miss", u: t.uid }); return; }
-    let a = u.ad * (1 + bsum(S, u, "ad")); if (u.spell && u.spell.pas === "ramp") a *= 1 + (1 - u.hp / u.maxhp);
+    let a = u.ad * (1 + bsum(S, u, "ad")); if (u.spell && u.spell.pas === "ramp") a *= 1 + (1 - u.hp / u.maxhp); if (u.it.marteau) a += u.maxhp * .02;
     const crit = S.rng() < u.critC; if (crit) a *= u.critD;
-    dmg(S, u, t, a, "p", { crit });
+    if (u.it.ventouse && (t.sk || 0) < 8) { t.sk = (t.sk || 0) + 1; t.armor -= 5; t.mr -= 5; }
+    dmg(S, u, t, a, "p", { crit, atk: 1 });
+    if (u.it.lancepierre && t.alive && S.rng() < .25) dmg(S, u, t, a, "p", { crit, atk: 1 });
+    if (u.it.poele) for (const e of S.units) if (e.alive && e !== t && e.side === t.side && dist(e, t) <= 1) dmg(S, u, e, a * .25, "p");
+    if (u.it.spinner && (u.spn || 0) < 15) { u.spn = (u.spn || 0) + 1; u.as *= 1.04; }
     if (u.maxMana) u.mana = Math.min(u.maxMana, u.mana + 10 + u.manaAtk);
   }
   function simRun(A, B, seed) { const S = simInit(A, B, seed); let n = 0; while (!S.over && n++ < 1000) { step(S); S.ev.length = 0; } return S; }
 
   /* ---------- partie ---------- */
   let G = null;
-  const newPlayer = (id, name, bot) => ({ id, name, bot, hp: 100, gold: 0, lvl: 1, xp: 0, board: [], bench: Array(9).fill(null), streak: 0, alive: true, shop: [], lock: false, place: 0 });
+  const newPlayer = (id, name, bot) => ({ id, name, bot, hp: 100, gold: 0, lvl: 1, xp: 0, board: [], bench: Array(9).fill(null), items: [], streak: 0, alive: true, shop: [], lock: false, place: 0 });
   function newGame(diff, seed) {
     const rng = rng32(seed || (Date.now() & 0x7fffffff)), names = BOTN.slice().sort(() => rng() - .5);
     G = { diff, rng, stat: { fights: 0, wins: 0 }, ri: 0, phase: "plan", players: [newPlayer(0, "Toi", false)], pool: {}, out: 0, log: [] };
     for (let i = 1; i < 8; i++) { G.players.push(newPlayer(i, names[i - 1], true)); G.players[i].av = ["🦊", "🐸", "🐼", "🐙", "🦉", "🐷", "🐯", "🦄"][i]; }
     SET.forEach(n => G.pool[n] = POOLN[UN[n].c - 1]);
-    G.me = G.players[0]; G.me.av = "👑"; G.hist = {}; roundStart(); return G;
+    G.me = G.players[0]; G.me.av = "👑"; G.hist = {}; { const pick = t => Object.keys(BOSS).filter(k => BOSS[k].t === t).sort(() => rng() - .5); const m = pick(2); G.boss = { 2: pick(1)[0], 3: m[0], 4: m[1], 5: pick(3)[0] }; } roundStart(); return G;
   }
   // manches : 3 manches de monstres, puis des blocs de 6 combats + 1 manche de monstres
-  const roundInfo = i => i < 3 ? { st: 1, k: i + 1, pve: i } : { st: 2 + Math.floor((i - 3) / 7), k: (i - 3) % 7 + 1, pve: (i - 3) % 7 === 6 ? Math.min(PVE.length - 1, 3 + Math.floor((i - 3) / 7)) : -1 };
+  // la dernière manche de chaque acte (à partir du 2e) est un boss
+  const roundInfo = i => { if (i < 3) return { st: 1, k: i + 1, pve: i, boss: null }; const st = 2 + Math.floor((i - 3) / 7), k = (i - 3) % 7 + 1; return { st, k, pve: k === 7 ? st : -1, boss: k === 7 ? G.boss[Math.min(5, st)] : null }; };
   function rollShop(p) {
     const od = ODDS[p.lvl - 1]; p.shop = [];
     for (let s = 0; s < 5; s++) { let x = G.rng() * 100, c = 0; while (c < 4 && x >= od[c]) { x -= od[c]; c++; }
@@ -284,7 +377,7 @@
     let again = true, made = [];
     while (again) { again = false; const cnt = {}; owned(p).forEach(x => { const k = x.n + "|" + x.star; (cnt[k] = cnt[k] || []).push(x); });
       for (const k in cnt) { const L = cnt[k]; if (L.length >= 3 && L[0].star < 3) { const keep = L.find(x => p.board.includes(x)) || L[0], rm = L.filter(x => x !== keep).slice(0, 2);
-          rm.forEach(x => { const bi = p.board.indexOf(x); if (bi >= 0) p.board.splice(bi, 1); else p.bench[p.bench.indexOf(x)] = null; }); rm.forEach(x => { if (x.st) { const k = keep.st = keep.st || { d: 0, k: 0, h: 0, t: 0, f: 0 }; k.d += x.st.d; k.k += x.st.k; k.h += x.st.h; k.t += x.st.t; k.f = Math.max(k.f, x.st.f); } }); keep.star++; made.push(keep); again = true; break; } } }
+          rm.forEach(x => { (x.it || []).forEach(id => { if (!equip(keep, id)) p.items.push(id); }); x.it = []; const bi = p.board.indexOf(x); if (bi >= 0) p.board.splice(bi, 1); else p.bench[p.bench.indexOf(x)] = null; }); rm.forEach(x => { if (x.st) { const k = keep.st = keep.st || { d: 0, k: 0, h: 0, t: 0, f: 0 }; k.d += x.st.d; k.k += x.st.k; k.h += x.st.h; k.t += x.st.t; k.f = Math.max(k.f, x.st.f); } }); keep.star++; made.push(keep); again = true; break; } } }
     return made;
   }
   function buy(p, i) {
@@ -298,7 +391,7 @@
     return made.length ? made : null;
   }
   const sellVal = x => { const c = UN[x.n].c; return x.star === 1 ? c : c * Math.pow(3, x.star - 1) - 1; };
-  function sell(p, x) { const bi = p.board.indexOf(x); if (bi >= 0) p.board.splice(bi, 1); else { const i = p.bench.indexOf(x); if (i < 0) return; p.bench[i] = null; } p.gold += sellVal(x); G.pool[x.n] += Math.pow(3, x.star - 1); }
+  function sell(p, x) { takeItems(p, x); const bi = p.board.indexOf(x); if (bi >= 0) p.board.splice(bi, 1); else { const i = p.bench.indexOf(x); if (i < 0) return; p.bench[i] = null; } p.gold += sellVal(x); G.pool[x.n] += Math.pow(3, x.star - 1); }
   function buyXp(p) { if (p.gold < 4 || p.lvl >= 9) return false; p.gold -= 4; addXp(p, 4); return true; }
   function addXp(p, v) { if (p.lvl >= 9) return; p.xp += v; while (p.lvl < 9 && p.xp >= XPN[p.lvl - 1]) { p.xp -= XPN[p.lvl - 1]; p.lvl++; } }
   function reroll(p) { if (p.gold < 2) return false; p.gold -= 2; rollShop(p); return true; }
@@ -329,17 +422,26 @@
     // placement : les meilleures unités sur le plateau, mêlée devant, distance derrière
     const all = owned(p).sort((a, b) => UN[b.n].c * b.star * b.star + score(b.n) * .3 - (UN[a.n].c * a.star * a.star + score(a.n) * .3));
     const seen = new Set(), on = [], off = []; all.forEach(x => { if (on.length < p.lvl && !seen.has(x.n)) { seen.add(x.n); on.push(x); } else off.push(x); });
-    while (off.length > 9) { const w = off.pop(); G.pool[w.n] += Math.pow(3, w.star - 1); p.gold += sellVal(w); }
+    while (off.length > 9) { const w = off.pop(); takeItems(p, w); G.pool[w.n] += Math.pow(3, w.star - 1); p.gold += sellVal(w); }
     p.board = on; p.bench = off.concat(Array(9).fill(null)).slice(0, 9);
+    // objets : sur les meilleures unités du plateau, en fusionnant les composants
+    off.forEach(x => takeItems(p, x)); p.items = p.items.filter(id => { for (const x of on) { if ((x.it || []).length < 3 || isComp(id) && (x.it || []).some(isComp)) { if (equip(x, id)) return false; } } return true; });
     const front = on.filter(x => CB[UN[x.n].cl].rg === 1), back = on.filter(x => CB[UN[x.n].cl].rg > 1), cols = [3, 2, 4, 1, 5, 0, 6];
     front.forEach((x, i) => { x.r = i < 7 ? 0 : 1; x.c = cols[i % 7]; }); back.forEach((x, i) => { x.r = i < 7 ? 3 : 2; x.c = cols[i % 7]; });
   }
-  const teamOf = p => ({ units: p.board.map(x => ({ n: x.n, star: x.star, r: x.r, c: x.c, ref: x })) });
-  function pveTeam(idx, ri) { const L = [], sc = 1 + Math.max(0, ri - 3) * .06; let i = 0; PVE[idx].forEach(([n, k]) => { for (let j = 0; j < k; j++) { const m = MON[n]; L.push({ n, raw: { hp: m[0] * sc, ad: m[1] * sc, as: m[2], art: n }, r: i > 4 ? 1 : 0, c: [3, 1, 5, 2, 4, 0, 6][i % 7] }); i++; } }); return { units: L }; }
+  const teamOf = p => ({ units: p.board.map(x => ({ n: x.n, star: x.star, r: x.r, c: x.c, ref: x, it: x.it || [] })) });
+  function pveTeam(inf) {
+    const L = []; let i = 0; const add = (n, k, sc, row) => { for (let j = 0; j < k; j++) { const m = MON[n]; L.push({ n, raw: { hp: m[0] * sc, ad: m[1] * sc, as: m[2], art: n }, r: row != null ? row : i > 4 ? 1 : 0, c: [3, 1, 5, 2, 4, 0, 6][i % 7] }); i++; } };
+    if (!inf.boss) { PVE[inf.pve].forEach(([n, k]) => add(n, k, 1)); return { units: L }; }
+    const B = BOSS[inf.boss], sc = 1 + Math.max(0, inf.st - [2, 3, 5][B.t - 1]) * .45, far = (B.rg || 1) > 1;
+    L.push({ n: inf.boss, raw: { hp: B.hp * sc, ad: B.ad * sc, as: B.as, rg: B.rg || 1, ar: B.ar, art: inf.boss, spell: B.s, m: 100, cost: [2, 4, 5][B.t - 1], boss: B.t, ex: B.ex }, r: far ? 2 : 1, c: 3 });
+    i = 1; (B.adds || []).forEach(([n, k]) => add(n, k, 1 + (inf.st - 2) * .25, 0));
+    return { units: L };
+  }
   // prépare les affrontements de la manche ; renvoie le combat du joueur
   function prepareFights() {
     const inf = G.info, alive = G.players.filter(p => p.alive), seed = () => Math.floor(G.rng() * 1e9); G.fights = [];
-    if (inf.pve >= 0) alive.forEach(p => G.fights.push({ a: p, b: null, B: pveTeam(inf.pve, G.ri), seed: seed() }));
+    if (inf.pve >= 0) alive.forEach(p => G.fights.push({ a: p, b: null, B: pveTeam(inf), seed: seed() }));
     else { const L = alive.slice().sort(() => G.rng() - .5); while (L.length >= 2) { const a = L.pop(), b = L.pop(); G.fights.push({ a, b, B: teamOf(b), seed: seed() }); }
       if (L.length) { const a = L[0], o = alive.filter(p => p !== a), g = o[Math.floor(G.rng() * o.length)]; G.fights.push({ a, b: null, ghost: g, B: teamOf(g), seed: seed() }); } }
     G.fights.forEach(f => { if (f.b === G.me) { const t = f.a; f.a = f.b; f.b = t; f.B = teamOf(t); } f.A = teamOf(f.a); });
@@ -351,7 +453,9 @@
     const lose = (p, n) => { const d = STAGEDMG[Math.min(inf.st, STAGEDMG.length - 1)] + n * (inf.pve >= 0 ? 1 : 2); p.hp -= d; p.streak = p.streak < 0 ? p.streak - 1 : -1; return d; };
     const win = (p, side) => { p.streak = inf.pve >= 0 ? p.streak : p.streak > 0 ? p.streak + 1 : 1; p.gold += (inf.pve >= 0 ? 0 : 1) + S.goldWin[side]; };
     f.a.gold += S.gold[0]; if (f.b) f.b.gold += S.gold[1];
-    if (inf.pve >= 0) { if (S.win === 0) { win(f.a, 0); f.a.gold += 2 + Math.min(3, inf.pve); f.res = { w: 1, g: 2 + Math.min(3, inf.pve) }; } else f.res = { w: 0, d: lose(f.a, S.left[1]) }; return; }
+    if (inf.pve >= 0) { const t = inf.boss ? BOSS[inf.boss].t : 0, w = S.win === 0;
+      if (w) { win(f.a, 0); f.a.gold += t ? 2 + t * 2 : 2; f.res = { w: 1 }; } else f.res = { w: 0, d: lose(f.a, inf.boss ? 2 + t * 2 : S.left[1]) };
+      f.res.it = t ? (w ? giveItems(f.a, t === 3 ? 1 : 2, t) : giveItems(f.a, 1, 0)) : giveItems(f.a, 1, 0); return; }
     if (S.win === 0) { win(f.a, 0); f.res = { w: 1 }; if (f.b) lose(f.b, S.left[0]); }
     else if (S.win === 1) { f.res = { w: 0, d: lose(f.a, S.left[1]) }; if (f.b) win(f.b, 1); }
     else { f.res = { w: 0, d: lose(f.a, 1) }; if (f.b) lose(f.b, 1); }
@@ -371,10 +475,10 @@
   const TRK = { main: "LmWsog9oHI8", pvp: ["Fx6NAT_jgTg", "GM5LWGlNd4M", "OwMAKI8HQc4", "zVEI77M8qyU"], boss1: "oZZY7Ll4ZzE", boss2: "kzN6u-n5BT4", boss3: "hA83EHtcAGM", win: "L9Hy3WFlcLQ" };
   const MU = { vol: 40, cur: null, box: null, main: null, alt: null };
   try { const v = +localStorage.getItem("wc-arena-vol"); if (localStorage.getItem("wc-arena-vol") != null && v >= 0 && v <= 100) MU.vol = v; } catch (_) {}
-  const yt = id => `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&loop=1&playlist=${id}&controls=0&disablekb=1&playsinline=1&rel=0&iv_load_policy=3&enablejsapi=1`;
+  const yt = (id, auto) => `https://www.youtube-nocookie.com/embed/${id}?autoplay=${auto ? 1 : 0}&loop=1&playlist=${id}&controls=0&disablekb=1&playsinline=1&rel=0&iv_load_policy=3&enablejsapi=1`;
   const muCmd = (f, func, args) => { try { f && f.contentWindow && f.contentWindow.postMessage(JSON.stringify({ event: "command", func, args: args || "" }), "*"); } catch (_) {} };
-  function muFrame(id) { const f = document.createElement("iframe"); f.allow = "autoplay; encrypted-media"; f.title = "Musique"; f.src = yt(id);
-    f.addEventListener("load", () => [200, 800, 1600, 3000, 5000].forEach(t => setTimeout(() => { try { f.contentWindow.postMessage(JSON.stringify({ event: "listening", id: 1 }), "*"); } catch (_) {} muCmd(f, "setVolume", [MU.vol]); if (f === MU.main && MU.alt) muCmd(f, "pauseVideo"); }, t)));
+  function muFrame(id, auto) { const f = document.createElement("iframe"); f.allow = "autoplay; encrypted-media"; f.title = "Musique"; f.src = yt(id, auto !== false);
+    f.addEventListener("load", () => [200, 800, 1600, 3000, 5000].forEach(t => setTimeout(() => { try { f.contentWindow.postMessage(JSON.stringify({ event: "listening", id: 1 }), "*"); } catch (_) {} muCmd(f, "setVolume", [MU.vol]); if (f === MU.main && MU.alt) muCmd(f, "pauseVideo"); if (MU.next && f === MU.next.f) muCmd(f, "pauseVideo"); }, t)));
     MU.box.appendChild(f); return f; }
   // key : "main" (préparation et monstres), "pvp", "boss1", "boss2", "boss3", "win", ou null pour tout couper
   function music(key) {
@@ -384,10 +488,16 @@
     if (!key || MU.vol <= 0 && !MU.main && key === "main") { if (!key && MU.main) { MU.main.remove(); MU.main = null; } if (!key) return; }
     if (key === "main") { if (MU.main) { muCmd(MU.main, "playVideo"); muCmd(MU.main, "setVolume", [MU.vol]); } else MU.main = muFrame(TRK.main); return; }
     if (MU.main) muCmd(MU.main, "pauseVideo");
+    if (MU.next && MU.next.key === key && MU.next.f.isConnected) { const f = MU.alt = MU.next.f; MU.next = null; [0, 150, 500].forEach(d => setTimeout(() => { if (MU.alt === f) { muCmd(f, "setVolume", [MU.vol]); muCmd(f, "playVideo"); } }, d)); return; }
     const t = TRK[key]; MU.alt = muFrame(Array.isArray(t) ? t[Math.floor(Math.random() * t.length)] : t);
   }
-  function muVol(v) { MU.vol = v; try { localStorage.setItem("wc-arena-vol", v); } catch (_) {} [MU.main, MU.alt].forEach(f => muCmd(f, "setVolume", [v])); }
-  function muStop() { MU.cur = null; if (MU.box) MU.box.remove(); MU.box = MU.main = MU.alt = null; }
+  // charge à l'avance la musique du prochain combat pour qu'elle parte tout de suite
+  function muPrep(key) {
+    if (typeof document === "undefined" || !MU.box || !MU.box.isConnected) return; if (MU.next) { if (MU.next.key === key) return; MU.next.f.remove(); MU.next = null; }
+    if (!key || !TRK[key] || key === "main") return; const t = TRK[key]; MU.next = { key, f: muFrame(Array.isArray(t) ? t[Math.floor(Math.random() * t.length)] : t, false) };
+  }
+  function muVol(v) { MU.vol = v; try { localStorage.setItem("wc-arena-vol", v); } catch (_) {} [MU.main, MU.alt, MU.next && MU.next.f].forEach(f => muCmd(f, "setVolume", [v])); }
+  function muStop() { MU.cur = null; if (MU.box) MU.box.remove(); MU.box = MU.main = MU.alt = MU.next = null; }
 
   /* ---------- bruitages (synthétisés, aucun fichier) ---------- */
   const SF = { ctx: null, vol: 50, last: {} };
@@ -435,18 +545,18 @@
   const RECO = { col: [0], bag: [0, 1], ass: [3], tir: [3], mag: [3], sou: [2, 3], str: [2] };
   const PLACE = { col: "en première ligne : il encaisse pour les autres.", bag: "devant, en 1re ou 2e ligne.", ass: "à l'arrière : il saute tout seul sur la ligne arrière ennemie au début du combat.", tir: "tout au fond, derrière tes unités de mêlée.", mag: "au fond, bien à l'abri.", sou: "au milieu ou au fond, près de ses alliés.", str: "au milieu, entouré de ses alliés." };
   const TIPS = ["Garde 10, 20, 30… or : chaque dizaine rapporte +1 or par manche (5 max).", "Trois cartes identiques fusionnent en ★★. N'achète pas tout : vise des paires.", "Glisse une unité vers la boutique pour la vendre.", "Les Colosses devant, les Tireurs et les Mages au fond.", "Une série de défaites rapporte aussi de l'or : perdre tôt n'est pas grave.", "Le cadenas 🔒 garde ta boutique pour la manche suivante.", "Monte de niveau pour poser plus d'unités et voir des cartes plus rares.", "Touche une synergie à gauche pour voir ses paliers et ses unités.", "Deux unités identiques sur le plateau ne comptent qu'une fois pour les synergies."];
-  const tokenHTML = (n, star, cost, extra) => `<div class="ar-tok c${cost} s${star} ${extra || ""}"><div class="ar-hex" style="${bg(n)}"></div><span class="ar-st">${stars(star)}</span></div>`;
+  const tokenHTML = (n, star, cost, extra, its) => `<div class="ar-tok c${cost} s${star} ${extra || ""}"><div class="ar-hex" style="${bg(n)}"></div><span class="ar-st">${stars(star)}</span>${its && its.length ? `<span class="ar-its">${its.map(id => `<i class="${isComp(id) ? "comp" : ""}">${ITEM[id].ic}</i>`).join("")}</span>` : ""}</div>`;
   const hexPos = (R, C) => `left:${((C + (R & 1) * .5) / 7.5 * 100).toFixed(3)}%;top:${(R * .75 / 6.25 * 100).toFixed(3)}%`;
   function open(api) {
     API = api; if (root) root.remove();
     root = document.createElement("div"); root.id = "arena"; document.body.appendChild(root); document.body.classList.add("ar-open");
     menu();
   }
-  function close() { muStop(); clearTimeout(UI.cine); stopLoop(); clearInterval(UI.timer); if (root) root.remove(); root = null; document.body.classList.remove("ar-open"); G = null; }
+  function close() { dragEnd(); muStop(); clearTimeout(UI.cine); stopLoop(); clearInterval(UI.timer); if (root) root.remove(); root = null; document.body.classList.remove("ar-open"); G = null; }
   function menu() {
     root.innerHTML = `<div class="ar-menu"><h1>⚔️ Wiki Arena</h1><p class="ar-adm">🔒 En construction : visible seulement par les admins</p>
       <p>Recrute des cartes dans la boutique, place-les sur ton plateau et regarde-les se battre. Trois cartes identiques fusionnent en ★★, puis en ★★★. Réunis des cartes du même univers ou de la même classe pour activer des synergies. Dernier joueur en vie : victoire !</p>
-      <p><b>Étape 1 :</b> solo contre 7 bots, set 1 (58 unités). Les objets, les boss, le multijoueur et le duo arrivent ensuite.</p>
+      <p><b>Étapes 1 et 2 :</b> solo contre 7 bots, set 1 (58 unités), 44 objets et 13 boss. Le multijoueur, les événements et le duo arrivent ensuite.</p>
       <div class="ar-diff"><span>Difficulté des bots :</span>${[["facile", "Facile"], ["normal", "Normal"], ["difficile", "Difficile"]].map(([k, l]) => `<button class="ar-b ${k === "normal" ? "on" : ""}" data-diff="${k}">${l}</button>`).join("")}</div>
       <div class="ar-row"><button class="ar-b big go" data-act="start">Lancer la partie</button><button class="ar-b" data-act="help">Règles</button><button class="ar-b" data-act="quit">Quitter</button></div></div>`;
     root.onclick = e => { const d = e.target.closest("[data-diff]"); if (d) { root.querySelectorAll("[data-diff]").forEach(b => b.classList.toggle("on", b === d)); return; }
@@ -461,6 +571,9 @@
       <p><b>Étoiles :</b> 3 cartes identiques fusionnent en ★★ (bien plus fortes), 3 ★★ en ★★★.</p>
       <p><b>Combat :</b> automatique. Les unités attaquent, gagnent du mana et lancent leur sort quand la barre bleue est pleine. Colosses, Bagarreurs et Assassins se battent au corps à corps ; Tireurs, Mages, Soutiens et Stratèges à distance.</p>
       <p><b>Jouer :</b> touche une unité pour la sélectionner et voir sa fiche, puis touche une case de ton plateau ou du banc pour la déplacer. « Vendre » la rend contre de l'or.</p>
+      <p><b>Objets :</b> les monstres et les boss donnent des composants. Deux composants sur la même unité fusionnent. Le bouton « 📖 Objets » montre toutes les fusions ; l'aimant 🧲 récupère les objets d'une unité.</p>
+      <p><b>Boss :</b> la dernière manche de chaque acte (💀) est un boss : un facile, deux moyens puis un boss final, différents à chaque partie. Sa fiche s'affiche pendant la préparation.</p>
+      <p><b>Mort subite :</b> après 30 s de combat, les dégâts augmentent et les soins diminuent jusqu'à ce qu'un camp tombe.</p>
       <h3>Synergies</h3>${Object.keys(TR).map(k => `<p>${TICO(k)} <b>${TNAME(k)}</b> (${TR[k].t.join(" / ")}) : ${TR[k].t.map((t, i) => TR[k].d(TR[k].v[i])).slice(-1)[0].replace(/\d+(\.\d+)?/g, m => m)}</p>`).join("")}
       <button class="ar-b" data-x>Fermer</button></div>`;
     root.appendChild(m); m.onclick = e => { if (e.target === m || e.target.closest("[data-x]")) m.remove(); };
@@ -470,7 +583,7 @@
         <span class="ar-tools"><button class="ar-b mini" data-act="vol">🔊</button><button class="ar-b mini" data-act="speed" id="ar-speed">×1</button><button class="ar-b mini" data-act="help">?</button><button class="ar-b mini" data-act="quit">✕</button></span></div>
       <div class="ar-mid"><div class="ar-left"><h4 class="ar-h">Synergies</h4><div class="ar-traits" id="ar-traits"></div><div class="ar-info" id="ar-info"></div></div>
         <div class="ar-center"><div class="ar-boardw"><div class="ar-board" id="ar-board"><div class="ar-plate"><i></i><i></i><i></i><i></i></div><div class="ar-cells" id="ar-cells"></div><div class="ar-live" id="ar-live"></div><div class="ar-banner" id="ar-banner" hidden></div></div></div>
-          <div class="ar-bench" id="ar-bench"></div></div>
+          <div class="ar-items" id="ar-items"></div><div class="ar-bench" id="ar-bench"></div></div>
         <div class="ar-right"><h4 class="ar-h">Joueurs</h4><div class="ar-players" id="ar-players"></div><h4 class="ar-h ar-hd">Dégâts du dernier combat</h4><div class="ar-dmg" id="ar-dmg"><span class="ar-hint">Le détail de tes unités s'affiche ici pendant les combats.</span></div></div></div>
       <div class="ar-vol" id="ar-vol" hidden><label>🎵 Musique <input type="range" min="0" max="100" step="1" value="${MU.vol}" data-vol="mu"><span>${MU.vol}</span></label><label>🔊 Bruitages <input type="range" min="0" max="100" step="1" value="${SF.vol}" data-vol="sf"><span>${SF.vol}</span></label></div>
       <div class="ar-shopbar" id="ar-shopbar"><div class="ar-eco" id="ar-eco"></div><div class="ar-shop" id="ar-shop"></div><div class="ar-side" id="ar-side"></div><div class="ar-sellz" id="ar-sellz">🪙 Lâche ici pour vendre</div></div>`;
@@ -478,9 +591,9 @@
     $("#ar-vol").oninput = e => { const t = e.target; if (t.dataset.vol === "mu") muVol(+t.value); else { sfVol(+t.value); sfx("buy"); } t.nextElementSibling.textContent = t.value; };
     drawAll(); startTimer();
   }
-  function drawAll() { drawTop(); drawTraits(); drawBoard(); drawBench(); drawShop(); drawPlayers(); drawInfo(); }
+  function drawAll() { drawTop(); drawTraits(); drawBoard(); drawBench(); drawItems(); drawShop(); drawPlayers(); drawInfo(); }
   function drawTop() { const i = G.info, base = i.st === 1 ? 0 : 3 + (i.st - 2) * 7, n = i.st === 1 ? 3 : 7; let h = `<b class="ar-stg">${i.st}-${i.k}</b>`;
-    for (let k = 0; k < n; k++) { const ri = base + k, inf = roundInfo(ri), d = G.hist[ri]; h += `<i class="ar-ri ${d === 1 ? "w" : d === 0 ? "l" : ""} ${ri === G.ri ? "cur" : ""}">${inf.pve >= 0 ? "🐾" : "⚔️"}</i>`; }
+    for (let k = 0; k < n; k++) { const ri = base + k, inf = roundInfo(ri), d = G.hist[ri]; h += `<i class="ar-ri ${d === 1 ? "w" : d === 0 ? "l" : ""} ${ri === G.ri ? "cur" : ""}">${inf.boss ? "💀" : inf.pve >= 0 ? "🐾" : "⚔️"}</i>`; }
     $("#ar-round").innerHTML = h; $("#ar-me").innerHTML = `<span class="ar-av">${G.me.av}</span><span>❤️ <b>${Math.max(0, G.me.hp)}</b></span>`; }
   function drawTraits() {
     const cnt = traitsOf(G.me.board), keys = Object.keys(cnt).sort((a, b) => (tier(b, cnt[b]) - tier(a, cnt[a])) || cnt[b] - cnt[a]);
@@ -490,11 +603,37 @@
   function drawBoard() {
     let h = ""; for (let R = 0; R < ROWS; R++) for (let C = 0; C < COLS; C++) { const mine = R >= 4, x = mine && G.phase === "plan" ? G.me.board.find(u => 4 + u.r === R && u.c === C) : null;
       const rc = mine && UI.sel && G.phase === "plan" && RECO[UN[UI.sel.n].cl].includes(R - 4) && (!x || x === UI.sel);
-      h += `<div class="ar-cell ${mine ? "mine" : "foe"} ${x && UI.sel === x ? "sel" : ""} ${rc ? "reco" : ""}" style="${hexPos(R, C)}" ${mine ? `data-cell="${R - 4},${C}"` : ""}>${x ? tokenHTML(x.n, x.star, UN[x.n].c) : ""}</div>`; }
+      h += `<div class="ar-cell ${mine ? "mine" : "foe"} ${x && UI.sel === x ? "sel" : ""} ${rc ? "reco" : ""} ${x && UI.selItem != null ? "tgt" : ""}" style="${hexPos(R, C)}" ${mine ? `data-cell="${R - 4},${C}"` : ""}>${x ? tokenHTML(x.n, x.star, UN[x.n].c, "", x.it) : ""}</div>`; }
     $("#ar-cells").innerHTML = h; if (G.phase === "plan") $("#ar-live").innerHTML = "";
     const b = $("#ar-board"); b.classList.toggle("fight", G.phase === "fight");
   }
-  function drawBench() { $("#ar-bench").innerHTML = G.me.bench.map((x, i) => `<div class="ar-slot ${x && UI.sel === x ? "sel" : ""}" data-bench="${i}">${x ? tokenHTML(x.n, x.star, UN[x.n].c) : ""}</div>`).join("") + `<span class="ar-cap">${G.me.board.length}/${G.me.lvl}</span>`; }
+  function drawBench() { $("#ar-bench").innerHTML = G.me.bench.map((x, i) => `<div class="ar-slot ${x && UI.sel === x ? "sel" : ""}" data-bench="${i}">${x ? tokenHTML(x.n, x.star, UN[x.n].c, "", x.it) : ""}</div>`).join("") + `<span class="ar-cap">${G.me.board.length}/${G.me.lvl}</span>`; }
+  function drawItems() { const p = G.me; $("#ar-items").innerHTML = `<button class="ar-it mag ${UI.selItem === "magnet" ? "sel" : ""}" data-item="magnet" title="Aimant">🧲</button>` + p.items.map((id, i) => `<button class="ar-it ${isComp(id) ? "comp" : "full"} ${UI.selItem === i ? "sel" : ""}" data-item="${i}">${ITEM[id].ic}</button>`).join("") + (p.items.length ? "" : `<span class="ar-hint">Tes objets arrivent ici : bats les monstres et les boss.</span>`) + `<button class="ar-b ar-guide" data-act="guide">📖 Objets</button>`; }
+  // utilise l'objet sélectionné (ou l'aimant) sur l'unité x
+  function useItem(sel, x) {
+    const p = G.me; UI.selItem = null; UI.info = null;
+    if (G.phase !== "plan" && p.board.includes(x)) { sfx("err"); note("Pas pendant le combat : cette unité est sur le plateau."); return drawAll(); }
+    if (sel === "magnet") { if (!(x.it || []).length) { sfx("err"); note("Cette unité ne porte aucun objet."); } else { takeItems(p, x); sfx("sell"); note("🧲 Objets récupérés."); } return drawAll(); }
+    const id = p.items[sel]; if (!id) return drawAll(); const r = equip(x, id);
+    if (!r) { sfx("err"); note("3 objets maximum par unité."); } else { p.items.splice(sel, 1); if (r !== id) { sfx("star"); note(`✨ ${ITEM[r].ic} ${ITEM[r].n} : ${ITEM[r].t}`); } else sfx("place"); }
+    drawAll();
+  }
+  const stTxt = st => Object.keys(st).map(k => ({ ad: v => `+${Math.round(v * 100)} % dégâts d'attaque`, as: v => `+${Math.round(v * 100)} % vitesse d'attaque`, sp: v => `+${Math.round(v * 100)} % puissance des sorts`, mana: v => `+${v} mana au départ`, ar: v => `+${v} armure`, mr: v => `+${v} résistance magique`, hp: v => `+${v} PV`, crit: v => `+${Math.round(v * 100)} % critique` })[k](st[k])).join(" · ");
+  function itemHTML(id) { const I = ITEM[id];
+    if (id === "magnet") return `<div class="ar-ibig">🧲</div><div class="ar-itx"><h3>Aimant</h3><p>Réutilisable à volonté : glisse-le (ou touche-le puis touche une unité) pour récupérer tous ses objets.</p><p class="ar-ipl">💡 Les objets fusionnés ne se séparent pas. Vendre une unité rend aussi ses objets.</p></div>`;
+    if (isComp(id)) return `<div class="ar-ibig">${I.ic}</div><div class="ar-itx"><h3>${I.n} <small>composant</small></h3><p class="ar-ist">${stTxt(I.st)}</p><p>Deux composants sur la même unité fusionnent :</p><div class="ar-rec">${CK.map(k => { const f = ITEM[FUS[[id, k].sort().join("+")]]; return `<p><span>${I.ic}+${COMP[k].ic}</span> <b>${f.ic} ${f.n}</b> : ${f.t}</p>`; }).join("")}</div></div>`;
+    return `<div class="ar-ibig">${I.ic}</div><div class="ar-itx"><h3>${I.n} <small>${COMP[I.mk[0]].ic} + ${COMP[I.mk[1]].ic}</small></h3><p class="ar-ist">${stTxt(I.st)}</p><p><b>Effet :</b> ${I.t}</p><p class="ar-ipl">💡 <b>Conseil :</b> ${I.tip}</p></div>`; }
+  function guide() {
+    const m = document.createElement("div"); m.className = "ar-modal";
+    m.innerHTML = `<div class="ar-sheet ar-gsheet"><h2>📖 Les objets</h2><p>Les monstres et les boss donnent des <b>composants</b>. Pose-en deux sur la même unité : ils fusionnent en un objet complet, plus fort. Une unité porte 3 objets au maximum. L'<b>aimant 🧲</b> récupère les objets d'une unité, autant de fois que tu veux.</p>
+      <h3>Composants</h3><div class="ar-gcomp">${CK.map(k => `<span>${COMP[k].ic} <b>${COMP[k].n}</b><small>${COMP[k].d}</small></span>`).join("")}</div>
+      <h3>Tableau des fusions</h3><div class="ar-gtab"><i></i>${CK.map(k => `<i title="${COMP[k].n}">${COMP[k].ic}</i>`).join("")}${CK.map(a => `<i title="${COMP[a].n}">${COMP[a].ic}</i>` + CK.map(b => { const f = ITEM[FUS[[a, b].sort().join("+")]]; return `<button data-gi="${f.id}" title="${esc(f.n)}">${f.ic}</button>`; }).join("")).join("")}</div>
+      <div class="ar-gone" id="ar-gone"><span class="ar-hint">Touche une case du tableau pour voir l'objet.</span></div>
+      <h3>Les 36 objets</h3>${Object.values(ITEM).filter(I => I.mk).map(I => `<p class="ar-gl"><span>${COMP[I.mk[0]].ic}+${COMP[I.mk[1]].ic}</span> <b>${I.ic} ${I.n}</b> : ${I.t} <em>${I.tip}</em></p>`).join("")}
+      <button class="ar-b" data-x>Fermer</button></div>`;
+    root.appendChild(m); m.onclick = e => { const g = e.target.closest("[data-gi]"); if (g) { m.querySelector("#ar-gone").innerHTML = `<div class="ar-info open">${itemHTML(g.dataset.gi)}</div>`; return; } if (e.target === m || e.target.closest("[data-x]")) m.remove(); };
+  }
+  function bossHTML(n, small) { const B = BOSS[n]; return `<div class="ar-ipic c5" style="${bg(n)}"></div><div class="ar-itx"><h3>💀 ${esc(artOf(n).nm)} <small>boss ${["facile", "moyen", "final"][B.t - 1]}</small></h3><p><b>${esc(B.s.n)} :</b> ${B.d}</p><p class="ar-ipl">🎁 <b>Butin :</b> ${B.t === 3 ? "3 objets complets + 1 composant" : B.t + " objet" + (B.t > 1 ? "s complets" : " complet") + " + 2 composants"} et ${2 + B.t * 2} or si tu gagnes ; 1 composant sinon.</p></div>${small ? "" : `<div class="ar-ibtn"><button class="ar-b mini" data-act="closeinfo">✕</button></div>`}`; }
   function drawShop() {
     const p = G.me, off = G.phase === "over", it = Math.min(5, Math.floor(p.gold / 10));
     $("#ar-eco").innerHTML = `<div class="ar-lv"><b>Niveau ${p.lvl}</b><small>${p.lvl < 9 ? `${p.xp}/${XPN[p.lvl - 1]} XP` : "max"}</small><em><u style="width:${p.lvl < 9 ? p.xp / XPN[p.lvl - 1] * 100 : 100}%"></u></em></div>
@@ -507,18 +646,21 @@
       return `<button class="ar-card c${d.c} ${have >= 2 ? "up" : have ? "pair" : ""}" data-buy="${i}" ${off || p.gold < d.c ? "disabled" : ""} style="${bg(n)}"><span class="ar-cost">${d.c} 🪙</span><span class="ar-tags">${[...d.o, d.cl].map(k => `<i>${TICO(k)} ${TNAME(k)}</i>`).join("")}</span><span class="ar-nm">${esc(a.nm)}</span><span class="ar-i" data-info="${esc(n)}">i</span>${have >= 2 ? `<span class="ar-up">★★ !</span>` : ""}</button>`; }).join("");
   }
   function drawPlayers() { $("#ar-players").innerHTML = G.players.slice().sort((a, b) => b.alive - a.alive || b.hp - a.hp).map(p => { const L = p.board.slice().sort((a, b) => UN[b.n].c * b.star - UN[a.n].c * a.star).slice(0, 9);
-    const f = G.phase === "fight" && G.fights && G.fights.find(x => x.a === p || x.b === p), vs = f ? (f.a === p ? (f.b ? f.b.name : f.ghost ? "fantôme" : "monstres") : f.a.name) : "";
-    return `<div class="ar-pl ${p.alive ? "" : "dead"} ${p === G.me ? "me" : ""} ${f ? "can" : ""} ${f && f === UI.view ? "view" : ""}" ${f ? `data-pl="${p.id}"` : ""}><div class="ar-plh"><span class="ar-av">${p.av}</span><b>${esc(p.name)}</b><span>${p.alive ? "❤️ " + Math.max(0, p.hp) : "💀 " + p.place + "e"}</span></div>${p.alive ? `<div class="ar-pls"><small>Niv. ${p.lvl}${Math.abs(p.streak) >= 2 ? (p.streak > 0 ? " · 🔥 " + p.streak : " · 🧊 " + -p.streak) : ""}${f ? ` · <span class="ar-plv">${f.done ? "✔️" : "⚔️"} ${esc(vs)}${f === UI.view ? " 👁" : ""}</span>` : ""}</small><span class="ar-plm">${L.map(x => `<i class="c${UN[x.n].c} s${x.star}" style="${bg(x.n)}"></i>`).join("")}</span></div>` : ""}<i class="ar-plb" style="width:${Math.max(0, p.hp)}%"></i></div>`; }).join(""); }
+    const f = G.phase === "fight" && G.fights && G.fights.find(x => x.a === p || x.b === p), vs = f ? (f.a === p ? (f.b ? f.b.name : f.ghost ? "fantôme" : G.info.boss ? "boss" : "monstres") : f.a.name) : "";
+    return `<div class="ar-pl ${p.alive ? "" : "dead"} ${p === G.me ? "me" : ""} ${f ? "can" : ""} ${f && !f.done ? "infight" : ""} ${f && f === UI.view ? "view" : ""}" ${f ? `data-pl="${p.id}"` : ""}><div class="ar-plh"><span class="ar-av">${p.av}</span><b>${esc(p.name)}</b><span>${p.alive ? "❤️ " + Math.max(0, p.hp) : "💀 " + p.place + "e"}</span></div>${p.alive ? `<div class="ar-pls"><small>Niv. ${p.lvl}${Math.abs(p.streak) >= 2 ? (p.streak > 0 ? " · 🔥 " + p.streak : " · 🧊 " + -p.streak) : ""}${f ? ` · <span class="ar-plv ${f.done ? "done" : ""}">${f.done ? "✔️ fini" : "⚔️ en combat"} · ${esc(vs)}${f === UI.view ? " 👁" : ""}</span>` : ""}</small><span class="ar-plm">${L.map(x => `<i class="c${UN[x.n].c} s${x.star}" style="${bg(x.n)}"></i>`).join("")}</span></div>` : ""}<i class="ar-plb" style="width:${Math.max(0, p.hp)}%"></i></div>`; }).join(""); }
   function drawDmg() { const S = UI.sim, box = root && $("#ar-dmg"); if (!S || !box) return; const L = S.units.filter(u => u.side === 0 && !u.sum && !u.mon).sort((a, b) => b.dealt - a.dealt), mx = Math.max(1, ...L.map(u => u.dealt));
     box.innerHTML = L.map(u => `<div class="ar-dr"><i class="ar-dp c${u.cost}" style="${bg(u.n)}"></i><div><span>${esc(artOf(u.n).nm)}</span><b>${Math.round(u.dealt)}</b><em><u style="width:${u.dealt / mx * 100}%"></u></em></div></div>`).join(""); }
   function statLine(n, star) { const d = UN[n], b = CB[d.cl], st = STAR[star - 1]; return `PV <b>${Math.round(HPB[d.c - 1] * b.hp * st)}</b> · Dégâts <b>${Math.round(ADB[d.c - 1] * b.ad * st)}</b> · Vitesse <b>${b.as}</b> · Portée <b>${b.rg === 1 ? "mêlée" : b.rg + " cases"}</b> · Armure <b>${b.ar}</b> · Mana <b>${d.s.m || b.m}</b>`; }
   function drawInfo() {
     const box = $("#ar-info"), x = UI.info; box.classList.toggle("open", !!x);
+    if (x && x.item != null) { box.innerHTML = itemHTML(x.item) + `<div class="ar-ibtn"><button class="ar-b mini" data-act="closeinfo">✕</button></div>`; return; }
+    if (x && x.boss) { box.innerHTML = bossHTML(x.boss); return; }
+    if (!x && G.info.boss && G.phase === "plan") { box.classList.add("open"); box.innerHTML = `<div class="ar-bossw">⚠️ Combat de boss</div>` + bossHTML(G.info.boss, true); return; }
     if (!x) { box.innerHTML = `<div class="ar-tip"><b>💡 Conseil</b><p>${TIPS[G.ri % TIPS.length]}</p><p class="ar-hint">Touche une unité ou le « i » d'une carte pour voir sa fiche. Glisse tes unités pour les placer.</p></div>`; return; }
     const d = UN[x.n], a = artOf(x.n);
     box.innerHTML = `<div class="ar-ipic c${d.c}" style="${bg(x.n)}"></div><div class="ar-itx"><h3>${esc(a.nm)} <small>${stars(x.star || 1)} · ${d.c}🪙</small></h3>
       <p class="ar-itr">${d.o.map(k => `${TICO(k)} ${TNAME(k)}`).join(" · ")} · ${TICO(d.cl)} ${TNAME(d.cl)}</p><p class="ar-ist">${statLine(x.n, x.star || 1)}</p>
-      <p><b>${esc(d.s.n)} :</b> ${esc(d.s.t)}</p><p class="ar-ipl">📍 <b>Placement :</b> ${PLACE[d.cl]}</p></div><div class="ar-ibtn">${x.own && (G.phase === "plan" || !G.me.board.includes(x.own)) ? `<button class="ar-b" data-act="sell">Vendre <small>+${sellVal(x.own)}🪙</small></button>` : ""}<button class="ar-b mini" data-act="closeinfo">✕</button></div>`;
+      <p><b>${esc(d.s.n)} :</b> ${esc(d.s.t)}</p><p class="ar-ipl">📍 <b>Placement :</b> ${PLACE[d.cl]}</p>${(x.its || x.own && x.own.it || []).map(id => `<p class="ar-iit">${ITEM[id].ic} <b>${ITEM[id].n}</b> : ${isComp(id) ? ITEM[id].d : ITEM[id].t}</p>`).join("")}</div><div class="ar-ibtn">${x.own && (G.phase === "plan" || !G.me.board.includes(x.own)) ? `<button class="ar-b" data-act="sell">Vendre <small>+${sellVal(x.own)}🪙</small></button>` : ""}<button class="ar-b mini" data-act="closeinfo">✕</button></div>`;
   }
   // dépose l'unité s sur une case du plateau, un emplacement du banc ou la zone de vente
   function dropOn(s, tg) {
@@ -536,41 +678,48 @@
     UI.sel = null; UI.info = null; drawAll();
   }
   /* ---------- glisser-déposer ---------- */
-  const unitAt = el => { if (!el || !G) return null; const c = el.closest("[data-cell]"), b = el.closest("[data-bench]"); if (c) { const [r, k] = c.dataset.cell.split(",").map(Number); return G.me.board.find(u => u.r === r && u.c === k) || null; } if (b) return G.me.bench[+b.dataset.bench] || null; return null; };
+  const unitAt = el => { if (!el || !G || !el.closest) return null; const c = el.closest("[data-cell]"), b = el.closest("[data-bench]"); if (c) { const [r, k] = c.dataset.cell.split(",").map(Number); return G.me.board.find(u => u.r === r && u.c === k) || null; } if (b) return G.me.bench[+b.dataset.bench] || null; return null; };
   const DG = { x: null };
   function dragDown(e) {
-    if (!G || G.phase === "over" || e.button > 0 || !e.target.closest(".ar-tok")) return; const x = unitAt(e.target); if (!x || G.phase !== "plan" && G.me.board.includes(x)) return;
-    DG.x = x; DG.sx = e.clientX; DG.sy = e.clientY; DG.on = false; DG.id = e.pointerId;
+    if (!G || G.phase === "over" || e.button > 0) return; const ib = e.target.closest("[data-item]");
+    if (ib) { DG.item = ib.dataset.item === "magnet" ? "magnet" : +ib.dataset.item; DG.x = null; }
+    else { if (!e.target.closest(".ar-tok")) return; const x = unitAt(e.target); if (!x || G.phase !== "plan" && G.me.board.includes(x)) return; DG.x = x; DG.item = null; }
+    DG.sx = e.clientX; DG.sy = e.clientY; DG.on = false; DG.id = e.pointerId;
     document.addEventListener("pointermove", dragMove); document.addEventListener("pointerup", dragUp); document.addEventListener("pointercancel", dragEnd);
   }
   function dragMove(e) {
-    if (!DG.x || e.pointerId !== DG.id) return;
-    if (!DG.on) { if (Math.hypot(e.clientX - DG.sx, e.clientY - DG.sy) < 9) return; DG.on = true; UI.sel = DG.x; UI.info = { n: DG.x.n, star: DG.x.star, own: DG.x }; drawAll(); root.classList.add("dragging"); sfx("pick");
-      $("#ar-sellz").textContent = `🪙 Lâche ici pour vendre (+${sellVal(DG.x)} or)`;
-      const g = DG.g = document.createElement("div"); g.className = "ar-ghost"; g.innerHTML = tokenHTML(DG.x.n, DG.x.star, UN[DG.x.n].c); root.appendChild(g); }
-    DG.g.style.left = e.clientX + "px"; DG.g.style.top = e.clientY + "px";
-    const el = document.elementFromPoint(e.clientX, e.clientY), t = el && (el.closest("[data-cell]") || el.closest("[data-bench]") || el.closest("#ar-shopbar"));
+    if (DG.x == null && DG.item == null || e.pointerId !== DG.id) return;
+    if (!DG.on) { if (Math.hypot(e.clientX - DG.sx, e.clientY - DG.sy) < 7) return; DG.on = true; sfx("pick"); const g = DG.g = document.createElement("div");
+      if (DG.x) { UI.selItem = null; UI.sel = DG.x; UI.info = { n: DG.x.n, star: DG.x.star, own: DG.x }; drawAll(); root.classList.add("dragging"); $("#ar-sellz").textContent = `🪙 Lâche ici pour vendre (+${sellVal(DG.x)} or)`;
+        const src = root.querySelector(".ar-cell.sel .ar-tok, .ar-slot.sel .ar-tok"), w = src ? src.getBoundingClientRect().width : 64; g.className = "ar-ghost"; g.style.width = w + "px"; g.innerHTML = tokenHTML(DG.x.n, DG.x.star, UN[DG.x.n].c, "", DG.x.it); }
+      else { UI.sel = null; UI.selItem = DG.item; UI.info = { item: DG.item === "magnet" ? "magnet" : G.me.items[DG.item] }; drawAll(); root.classList.add("dragitem"); g.className = "ar-ghost item"; g.textContent = DG.item === "magnet" ? "🧲" : ITEM[G.me.items[DG.item]].ic; }
+      document.body.appendChild(g); }
+    e.preventDefault(); DG.g.style.transform = `translate(${e.clientX}px,${e.clientY}px) translate(-50%,-60%) scale(1.15)`;
+    const el = document.elementFromPoint(e.clientX, e.clientY), t = el && (el.closest("[data-cell]") || el.closest("[data-bench]") || DG.x && el.closest("#ar-shopbar"));
     if (t !== DG.over) { if (DG.over) DG.over.classList.remove("over"); DG.over = t || null; if (t) t.classList.add("over"); }
   }
   function dragUp(e) {
-    if (!DG.x || e.pointerId !== DG.id) return; const x = DG.x, was = DG.on; dragEnd(); if (!was) return;
+    if (DG.x == null && DG.item == null || e.pointerId !== DG.id) return; const x = DG.x, it = DG.item, was = DG.on; dragEnd(); if (!was) return;
     UI.noClick = Date.now(); const el = document.elementFromPoint(e.clientX, e.clientY), c = G.phase === "plan" && el && el.closest("[data-cell]"), b = el && el.closest("[data-bench]");
+    if (it != null) { const u = unitAt(c || b); if (u) return useItem(it, u); UI.selItem = null; UI.info = null; return drawAll(); }
     if (c) dropOn(x, { cell: c.dataset.cell.split(",").map(Number) }); else if (b) dropOn(x, { bench: +b.dataset.bench }); else if (el && el.closest("#ar-shopbar")) dropOn(x, { sell: 1 }); else { UI.sel = null; UI.info = null; drawAll(); }
   }
-  function dragEnd() { document.removeEventListener("pointermove", dragMove); document.removeEventListener("pointerup", dragUp); document.removeEventListener("pointercancel", dragEnd); if (DG.g) DG.g.remove(); if (DG.over) DG.over.classList.remove("over"); DG.g = DG.over = DG.x = null; DG.on = false; if (root) root.classList.remove("dragging"); }
+  function dragEnd() { document.removeEventListener("pointermove", dragMove); document.removeEventListener("pointerup", dragUp); document.removeEventListener("pointercancel", dragEnd); if (DG.g) DG.g.remove(); if (DG.over) DG.over.classList.remove("over"); DG.g = DG.over = DG.x = DG.item = null; DG.on = false; if (root) root.classList.remove("dragging", "dragitem"); }
   function note(t) { if (API && API.toast) API.toast(t); }
   function onClick(e) {
     const t = e.target; if (UI.noClick && Date.now() - UI.noClick < 200) return;
     const inf = t.closest("[data-info]"); if (inf) { e.stopPropagation(); UI.info = { n: inf.dataset.info, star: 1 }; return drawInfo(); }
     const act = t.closest("[data-act]"); if (act && !act.disabled) return doAct(act.dataset.act);
     const tr = t.closest("[data-trait]"); if (tr) return traitPop(tr.dataset.trait);
+    const itb = t.closest("[data-item]"); if (itb && G && G.phase !== "over") { const k = itb.dataset.item === "magnet" ? "magnet" : +itb.dataset.item; UI.sel = null; UI.selItem = UI.selItem === k ? null : k; UI.info = UI.selItem == null ? null : { item: k === "magnet" ? "magnet" : G.me.items[k] }; if (UI.selItem != null) sfx("pick"); return drawAll(); }
     const pl = t.closest("[data-pl]"); if (pl && G && G.fights) { const q = G.players[+pl.dataset.pl], f = G.fights.find(x => x.a === q || x.b === q); if (f && f !== UI.view) { sfx("pick"); watch(f); } return; }
     if (!G || G.phase === "over") return;
     const b = t.closest("[data-buy]"); if (b && !b.disabled) { const r = buy(G.me, +b.dataset.buy); sfx(typeof r === "string" ? "err" : r ? "star" : "buy"); if (typeof r === "string") { if (r !== "vide") note(r); } else if (r) note(`✨ ${artOf(r[0].n).nm} passe ${stars(r[0].star)} !`); UI.sel = null; return drawAll(); }
     const fighting = G.phase !== "plan";
-    if (fighting) { const tk = t.closest("[data-uid]"); if (tk && UI.sim) { const u = UI.sim.units[+tk.dataset.uid]; if (u && UN[u.n]) { UI.sel = null; UI.info = { n: u.n, star: u.star }; drawInfo(); } return; } }
+    if (fighting) { const tk = t.closest("[data-uid]"); if (tk && UI.sim) { const u = UI.sim.units[+tk.dataset.uid]; if (u && UN[u.n]) { UI.sel = null; UI.info = { n: u.n, star: u.star, its: u.items }; drawInfo(); } else if (u && u.boss) { UI.info = { boss: u.n }; drawInfo(); } return; } }
     const cell = fighting ? null : t.closest("[data-cell]"), slot = t.closest("[data-bench]"), p = G.me;
     if (cell || slot) { const there = cell ? p.board.find(u => u.r + "," + u.c === cell.dataset.cell) : p.bench[+slot.dataset.bench];
+      if (UI.selItem != null) { if (there) return useItem(UI.selItem, there); UI.selItem = null; UI.info = null; return drawAll(); }
       if (UI.sel && UI.sel !== there) return dropOn(UI.sel, cell ? { cell: cell.dataset.cell.split(",").map(Number) } : { bench: +slot.dataset.bench });
       if (there) { UI.sel = UI.sel === there ? null : there; UI.info = UI.sel ? { n: there.n, star: there.star, own: there } : null; if (UI.sel) sfx("pick"); }
       return drawAll(); }
@@ -583,7 +732,8 @@
     if (a === "skip") return cineEnd();
     if (a === "myfight") { if (G && G.fights && UI.fight) watch(UI.fight); return; }
     if (a === "again") { clearInterval(UI.timer); clearTimeout(UI.cine); stopLoop(); music(null); return menu(); }
-    if (a === "closeinfo") { UI.info = null; UI.sel = null; return drawAll(); }
+    if (a === "closeinfo") { UI.info = null; UI.sel = null; UI.selItem = null; return drawAll(); }
+    if (a === "guide") return guide();
     if (a === "speed") { UI.speed = UI.speed === 1 ? 2 : UI.speed === 2 ? 4 : 1; $("#ar-speed").textContent = "×" + UI.speed; if (UI.loop) { stopLoop(); runLoop(); } return; }
     if (a === "ready") { if (G.phase === "plan") fight(); return; }
     if (a === "sell" && G.phase !== "plan" && UI.info && UI.info.own && p.board.includes(UI.info.own)) return;
@@ -597,7 +747,7 @@
       <p class="ar-hint">Unités : ${SET.filter(n => UN[n].o.includes(k) || UN[n].cl === k).map(n => `${esc(n)} (${UN[n].c})`).join(", ")}</p><button class="ar-b" data-x>Fermer</button></div>`;
     root.appendChild(m); m.onclick = e => { if (e.target === m || e.target.closest("[data-x]")) m.remove(); };
   }
-  function startTimer() { clearInterval(UI.timer); UI.tleft = UI.ttot = G.ri < 3 ? 25 : 40; const tick = () => { if (!root || !G || G.phase !== "plan") return clearInterval(UI.timer); $("#ar-timer").textContent = "⏳ " + UI.tleft; $("#ar-tbar").style.width = UI.tleft / UI.ttot * 100 + "%"; if (UI.tleft <= 5 && UI.tleft > 0) sfx("tick"); if (UI.tleft-- <= 0) { clearInterval(UI.timer); fight(); } }; tick(); UI.timer = setInterval(tick, 1000); }
+  function startTimer() { muPrep(G.info.boss ? "boss" + BOSS[G.info.boss].t : G.info.pve >= 0 ? null : "pvp"); clearInterval(UI.timer); UI.tleft = UI.ttot = G.ri < 3 ? 25 : 40; const tick = () => { if (!root || !G || G.phase !== "plan") return clearInterval(UI.timer); $("#ar-timer").textContent = "⏳ " + UI.tleft; $("#ar-tbar").style.width = UI.tleft / UI.ttot * 100 + "%"; if (UI.tleft <= 5 && UI.tleft > 0) sfx("tick"); if (UI.tleft-- <= 0) { clearInterval(UI.timer); fight(); } }; tick(); UI.timer = setInterval(tick, 1000); }
   /* ---------- combat affiché ---------- */
   function fight() {
     clearInterval(UI.timer); if (G.phase !== "plan") return; dragEnd(); sfx("go"); const p = G.me;
@@ -606,9 +756,10 @@
     G.phase = "fight"; UI.sel = null; UI.info = null;
     const f = prepareFights(); UI.fight = f; G.fights.forEach(x => { x.S = simInit(x.A, x.B, x.seed); x.done = false; });
     drawAll(); $("#ar-tbar").style.width = "0%"; watch(f);
-    music(f.b || f.ghost ? "pvp" : "main"); runLoop();
+    music(G.info.boss ? "boss" + BOSS[G.info.boss].t : f.b || f.ghost ? "pvp" : "main"); runLoop();
+    if (G.info.boss) { const b = $("#ar-banner"); b.hidden = false; b.className = "ar-banner bossb"; b.innerHTML = `💀 ${esc(artOf(G.info.boss).nm)}<small>${esc(BOSS[G.info.boss].s.n)}</small>`; setTimeout(() => { if (root && b.classList.contains("bossb")) b.hidden = true; }, 1800); }
   }
-  const foeName = f => f.b ? f.b.name : f.ghost ? "le fantôme de " + f.ghost.name : "les monstres";
+  const foeName = f => f.b ? f.b.name : f.ghost ? "le fantôme de " + f.ghost.name : G.info.boss ? artOf(G.info.boss).nm : "les monstres";
   // affiche le combat f (le sien ou celui d'un autre joueur)
   function watch(f) {
     UI.view = f; UI.sim = f.S; UI.tok = {}; $("#ar-live").innerHTML = ""; $("#ar-cells").querySelectorAll(".ar-tok").forEach(x => x.remove());
@@ -618,8 +769,8 @@
       v.innerHTML = `<span>👁 ${esc(f.a.name)} (en bas) contre ${esc(foeName(f))} (en haut)</span><button class="ar-b" data-act="myfight">Revenir à mon combat</button>`; } else if (v) v.remove();
     drawPlayers(); drawDmg();
   }
-  function addTok(u) { const el = document.createElement("div"); el.className = `ar-u side${u.side} c${u.cost} ${u.mon ? "mon" : ""}`; el.dataset.uid = u.uid; el.style.cssText = hexPos(u.R, u.C);
-    el.innerHTML = `<div class="ar-bars"><i class="hp"></i><i class="mp"></i></div>${tokenHTML(u.mon ? u.art : u.n, u.star, u.cost)}`; $("#ar-live").appendChild(el); UI.tok[u.uid] = el; }
+  function addTok(u) { const el = document.createElement("div"); el.className = `ar-u side${u.side} c${u.cost} ${u.mon ? "mon" : ""} ${u.boss ? "boss" : ""}`; el.dataset.uid = u.uid; el.style.cssText = hexPos(u.R, u.C);
+    el.innerHTML = `<div class="ar-bars"><i class="hp"></i><i class="mp"></i></div>${tokenHTML(u.mon ? u.art : u.n, u.star, u.cost, "", u.items)}`; $("#ar-live").appendChild(el); UI.tok[u.uid] = el; }
   function runLoop() { UI.loop = setInterval(tickFight, 100 / UI.speed); }
   function stopLoop() { clearInterval(UI.loop); UI.loop = null; }
   function fx(cls, R, C, txt, ms) { const el = document.createElement("div"); el.className = "ar-fx " + cls; el.style.cssText = hexPos(R, C); if (txt != null) el.textContent = txt; $("#ar-live").appendChild(el); setTimeout(() => el.remove(), ms || 700); return el; }
@@ -628,8 +779,8 @@
     for (const f of G.fights) { if (f.done) continue; const S = f.S; step(S); if (f === UI.view) showEvents(S); S.ev.length = 0;
       if (S.over) { f.done = true; const g0 = G.me.gold; resolveFight(f, S);
         if (f === UI.fight) { G.hist[G.ri] = f.res.w ? 1 : 0; sfx(f.res.w ? "win" : "lose"); const b = $("#ar-banner"); b.hidden = false; b.className = "ar-banner " + (f.res.w ? "win" : "lose");
-          b.innerHTML = (f.res.w ? `Victoire !<small>+${G.me.gold - g0} 🪙</small>` : `Défaite<small>−${f.res.d} PV</small>`) + (G.fights.some(x => !x.done) ? `<em>Les autres combats continuent : touche un joueur pour regarder.</em>` : "");
-          setTimeout(() => { if (root) $("#ar-banner").hidden = true; }, 2200); drawTop(); drawShop(); }
+          b.innerHTML = (f.res.w ? `Victoire !<small>+${G.me.gold - g0} 🪙</small>` : `Défaite<small>−${f.res.d} PV</small>`) + (f.res.it && f.res.it.length ? `<small class="ar-loot">Butin : ${f.res.it.map(id => ITEM[id].ic).join(" ")}</small>` : "") + (G.fights.some(x => !x.done) ? `<em>Les autres combats continuent : touche un joueur pour regarder.</em>` : "");
+          setTimeout(() => { if (root) $("#ar-banner").hidden = true; }, 2200); drawTop(); drawShop(); drawItems(); }
         drawPlayers(); } }
     const S = UI.sim; if (S) { if (Math.round(S.t * 10) % 5 === 0) drawDmg();
       for (const u of S.units) { const el = UI.tok[u.uid]; if (!el || !u.alive) continue; el.style.left = ((u.C + (u.R & 1) * .5) / 7.5 * 100) + "%"; el.style.top = (u.R * .75 / 6.25 * 100) + "%";
@@ -697,5 +848,5 @@
       <div class="ar-ctab">${L.map(({ x, st }, i) => `<div class="ar-crow c${UN[x.n].c} ${i ? "" : "mvp"}"><div class="ar-cmini" style="${bg(x.n)}"></div><div class="ar-cn"><b>${esc(artOf(x.n).nm)}</b><small>${stars(x.star)}${i ? "" : " · MVP"}</small></div><span>⚔️ ${fmt(st.d)}</span><span>💀 ${st.k}</span><span>💚 ${fmt(st.h)}</span><span>🛡️ ${fmt(st.t)}</span></div>`).join("")}</div>
       <div class="ar-row"><button class="ar-b go" data-act="again">Rejouer</button><button class="ar-b" data-act="quit">Quitter</button></div></div>`;
   }
-  W.WikiArena = { open, close, _t: { UN, SET, TR, newGame, simRun, simInit, step, teamOf, buy, sell, merge, botTurn, prepareFights, resolveFight, resolveOthers, roundEnd, watch, roundInfo, pveTeam, TRK, cine, get G() { return G; } } };
+  W.WikiArena = { open, close, _t: { UN, SET, TR, newGame, simRun, simInit, step, teamOf, buy, sell, merge, botTurn, prepareFights, resolveFight, resolveOthers, roundEnd, watch, roundInfo, pveTeam, TRK, BOSS, ITEM, FUS, COMP, equip, giveItems, cine, get G() { return G; } } };
 })();

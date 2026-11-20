@@ -227,7 +227,7 @@ body.ar-open{overflow:hidden}
 /* ----- habillage v3 : arène, barre de manche, boutique ----- */
 #arena{background:linear-gradient(#16304f,#1d4a5c 38%,#173a36 70%,#0d1f1c)}
 #arena::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 60% 45% at 50% 42%,#7fd0c033,#0000 70%),radial-gradient(circle at 12% 30%,#ffffff12 0 6%,#0000 7%),radial-gradient(circle at 86% 22%,#ffffff10 0 8%,#0000 9%)}
-#arena>*{position:relative}
+#arena>.ar-top,#arena>.ar-mid,#arena>.ar-shopbar{position:relative}
 .ar-top{background:none;justify-content:space-between;align-items:flex-start;padding:0 10px;min-height:50px}
 .ar-me{display:flex;align-items:center;gap:8px;font-size:18px;padding-top:8px}
 .ar-av{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;background:radial-gradient(#3fb6c9,#14506a);border:2px solid #9ee7f0;font-size:16px;flex:none}
@@ -365,3 +365,44 @@ body.ar-open{overflow:hidden}
 .ar-plm i,.ar-pl .ar-plm i{width:15px;height:15px;border-width:1.5px}
 .ar-players{flex:0 0 auto;overflow:visible}.ar-right{overflow:auto}.ar-dmg{min-height:90px}
 @media (max-width:900px){.ar-players{overflow-x:auto}.ar-right{overflow:visible}.ar-pls{display:none}}
+
+/* ----- objets, boss, vrai glisser-déposer ----- */
+.ar-ghost{position:fixed;left:0;top:0;z-index:9500;width:64px;transform:translate(-999px,-999px);pointer-events:none;filter:drop-shadow(0 14px 12px #000b);will-change:transform;transition:none}
+.ar-ghost .ar-tok{width:100%}
+.ar-ghost.item{width:auto;font-size:38px;line-height:1}
+#arena.dragging .sel .ar-tok{opacity:.15}
+.ar-its{position:absolute;left:0;right:0;bottom:-20%;display:flex;justify-content:center;gap:1px;z-index:3}
+.ar-its i{font-style:normal;font-size:clamp(8px,1.9cqw,13px);line-height:1;background:#0a0f14;border:1px solid #c9a24a;border-radius:4px;padding:1px}
+.ar-its i.comp{border-color:#8a94a6}
+.ar-slot .ar-its i{font-size:9px}.ar-slot .ar-its{bottom:-10%}
+.ar-u .ar-its i{font-size:clamp(7px,1.6cqw,11px)}
+.ar-items{display:flex;gap:5px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:6px;min-height:40px;width:min(100%,700px);align-self:center}
+.ar-it{width:38px;height:38px;border-radius:9px;font-size:21px;line-height:1;padding:0;background:#0e2730;border:2px solid #c9a24a;touch-action:none;cursor:grab;box-shadow:0 3px 6px #0008}
+.ar-it.comp{border-color:#8a94a6}.ar-it.mag{border-color:#e5484d;background:#3a1016;margin-right:6px}
+.ar-it.sel{box-shadow:0 0 0 3px #ffd24d,0 0 12px #ffd24d;transform:translateY(-3px)}
+.ar-items .ar-hint{flex:0 1 auto}.ar-guide{padding:6px 10px;font-size:12.5px;margin-left:6px;border-radius:9px;background:#0e2730;border-color:#c9a24a}
+.ar-cell.tgt::before{background:#ffd24d;animation:arreco2 .9s ease-in-out infinite}
+#arena.dragitem .ar-cell.mine .ar-tok,#arena.dragitem .ar-slot .ar-tok{filter:drop-shadow(0 0 6px #ffd24d)}
+.ar-ibig{width:64px;height:64px;flex:none;font-size:40px;display:flex;align-items:center;justify-content:center;background:#0008;border:2px solid #c9a24a;border-radius:12px}
+.ar-rec p{margin:2px 0;font-size:11.5px;line-height:1.25}.ar-rec span{opacity:.8;white-space:nowrap}
+.ar-rec{max-height:230px;overflow:auto}
+.ar-iit{color:#f3e3b0}
+.ar-bossw{width:100%;font-weight:800;color:#ff9c9c;letter-spacing:.06em;text-transform:uppercase;font-size:12px}
+.ar-u.boss{z-index:5}.ar-u.boss .ar-tok{transform:scale(1.75);filter:drop-shadow(0 0 12px #ff5a5a)}
+.ar-u.boss .ar-tok::before{background:#b3121a}
+.ar-u.boss .ar-bars{left:-40%;right:-40%;top:-52%}.ar-u.boss .ar-bars .hp{height:8px}
+.ar-u.boss.lunge .ar-tok,.ar-u.boss.casting .ar-tok{animation:none}
+.ar-banner.bossb{border-color:#ff5a5a;color:#ffb0b0;font-size:30px;animation:arzoom .6s}
+.ar-loot{font-size:20px!important;margin-top:4px}
+.ar-ri{position:relative}
+.ar-pl.infight{border-color:#ff9c3d;animation:arfightp 1s ease-in-out infinite alternate}
+@keyframes arfightp{to{box-shadow:inset 3px 0 0 #ff9c3d,0 0 8px #ff9c3d66}}
+.ar-plv{color:#ffb86b;font-weight:700}.ar-plv.done{color:#8fe3a8;font-weight:500}
+.ar-gsheet{max-width:680px}
+.ar-gcomp{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:5px}.ar-gcomp span{background:#0e2730;border-radius:8px;padding:5px 8px;font-size:13px}.ar-gcomp small{display:block;opacity:.8;font-size:11.5px}
+.ar-gtab{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:3px;max-width:420px;margin:6px auto}
+.ar-gtab i{font-style:normal;font-size:20px;text-align:center;align-self:center}
+.ar-gtab button{aspect-ratio:1;font-size:20px;background:#0e2730;border:1px solid #c9a24a88;border-radius:8px;padding:0}
+.ar-gone{min-height:54px;margin:6px 0}.ar-gone .ar-info{display:flex;position:static;margin:0}
+.ar-gl{font-size:12.5px!important;margin:4px 0!important}.ar-gl span{opacity:.75;white-space:nowrap}.ar-gl em{display:block;font-style:normal;color:#b6f3c5;font-size:11.5px}
+@media (max-width:900px){.ar-items{margin-top:3px;min-height:34px;gap:3px}.ar-it{width:32px;height:32px;font-size:17px}.ar-items .ar-hint{font-size:10.5px}.ar-rec{max-height:120px}.ar-guide{font-size:11px;padding:4px 7px}}
