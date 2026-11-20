@@ -72,8 +72,8 @@ body.ar-open{overflow:hidden}
 .ar-fx.beam::after{content:"";position:absolute;left:50%;top:50%;width:900%;height:16%;transform-origin:0 50%;transform:rotate(var(--ang,0rad));background:linear-gradient(90deg,#bfe3ff,#6fb6ff00);border-radius:99px;animation:arbeam .45s forwards}
 .ar-fx.beam.side1::after{background:linear-gradient(90deg,#ffc9c9,#ff6f6f00)}
 @keyframes arbeam{to{opacity:0}}
-.ar-board.flash{animation:arflash .35s}
-@keyframes arflash{50%{filter:brightness(1.8)}}
+
+
 .ar-banner{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:20;padding:14px 30px;border-radius:14px;font-size:26px;font-weight:800;text-align:center;background:#000c;border:2px solid}
 .ar-banner small{display:block;font-size:15px;font-weight:600}
 .ar-banner.win{border-color:#4ade80;color:#4ade80}.ar-banner.lose{border-color:#f87171;color:#f87171}
@@ -552,3 +552,8 @@ body.ar-open{overflow:hidden}
   .ar-items{position:relative;z-index:3;margin-top:6px}
   .ar-guide{background:#0e2730}
 }
+
+.ar-flashv{position:absolute;inset:-6.5% -7.5% -5%;border-radius:22px;background:#fff;opacity:0;pointer-events:none;z-index:15;animation:arflv .42s ease-out}
+@keyframes arflv{0%{opacity:.55}100%{opacity:0}}
+#arena.spec .ar-shopbar,#arena.spec .ar-bench,#arena.spec .ar-items{display:none}
+#arena.spec .ar-center::after{content:"👁 Mode spectateur : touche un joueur pour voir son combat ou son équipe.";display:block;text-align:center;padding:10px;font-weight:600;color:#9ee7f0}

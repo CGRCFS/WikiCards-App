@@ -599,6 +599,7 @@
     const dead = G.players.filter(p => p.alive && p.hp <= 0).sort((a, b) => a.hp - b.hp);
     dead.forEach(p => { p.alive = false; p.place = G.n - G.out; G.out++; owned(p).forEach(x => G.pool[x.n] += Math.pow(3, x.star - 1)); p.board = []; p.bench = Array(9).fill(null); });
     const alive = G.players.filter(p => p.alive);
+    if (G.spec) { if (new Set(alive.map(p => p.team)).size <= 1) { G.winner = alive.map(p => p.name).join(" et "); G.phase = "over"; return; } G.ri++; roundStart(); return; }
     if (!G.me.alive) { G.phase = "over"; return; }
     if (alive.every(p => p.team === G.me.team)) { G.me.place = 1; G.phase = "over"; return; }
     if (G.mp && !G.duo && !alive.some(p => !p.bot && p !== G.me) && !G.players.some(p => p.bot)) { G.me.place = 1; G.phase = "over"; return; }
@@ -683,7 +684,7 @@
   function sfVol(v) { SF.vol = v; try { localStorage.setItem("wc-arena-sfx", v); } catch (_) {} }
 
   /* ---------- multijoueur : le salon synchronise les plateaux, chaque appareil rejoue les mêmes combats ---------- */
-  const MP = { gifts: [], snap: null, room: null, st: null, poll: null, host: false, gid: null, sent: -1, tick: 0 };
+  const MP = { deadGid: null, gifts: [], snap: null, room: null, st: null, poll: null, host: false, gid: null, sent: -1, tick: 0 };
   const rpc = async (fn, args) => { const r = await API.rpc(fn, args); if (r.error) throw new Error(r.error.message || "Erreur"); return r.data; };
   const packBoard = p => p.board.map(x => ({ n: x.n, s: x.star, r: x.r, c: x.c, it: x.it || [] }));
   const unpack = b => (b || []).filter(x => UN[x.n]).map(x => ({ n: x.n, star: x.s || 1, r: x.r, c: x.c, it: (x.it || []).filter(id => ITEM[id]) }));
@@ -717,12 +718,13 @@
   async function mpTick() {
     if (!root || !MP.room) return mpStop(); let d; try { d = await rpc("room_state", { p_room: MP.room, p_after: 0 }); } catch (e) { mpStop(); MP.room = null; note(e.message); if (!G) menu(); return; }
     if (!root || !MP.room) return; MP.st = d; MP.host = d.host === API.uid; const s = d.state || {};
+    if (!G && d.status === "jeu" && MP.deadGid && MP.deadGid === s.gid) { if (s.r !== MP.sent) { MP.sent = s.r; rpc("ar_submit", { p_room: MP.room, p_r: s.r, p_data: { dead: 1 } }).catch(() => {}); } const b = root.querySelector("#ar-room"); if (b && !b.dataset.w) { b.dataset.w = 1; b.innerHTML = `<p>La partie continue sans toi. Tu pourras rejouer quand elle sera terminée.</p><div class="ar-row"><button class="ar-b" data-act="mpquit">Quitter le salon</button></div>`; } return; }
     if (d.status === "jeu" && s.gid && s.gid !== MP.gid) { if ((s.order || []).includes(API.uid) && s.r === 0 && !s.prev) return mpBegin(s); if (!G) { const sv = loadSave(); if (sv && sv.mp && sv.gid === s.gid && (sv.G.ri === s.r || sv.G.ri === s.r - 1 && s.prev && s.prev.r === sv.G.ri)) { MP.gid = s.gid; MP.gifts = []; music("main"); restore(sv); const un = b => (b || []).filter(x => UN[x.n]).map(x => ({ n: x.n, star: x.s || 1, r: x.r, c: x.c, it: x.it || [] }));
           if (sv.G.ri === s.r) { const mine = (s.by || {})[API.uid]; if (mine) { G.phase = "wait"; MP.sent = G.ri; MP.snap = un(mine.b || G.lastSub); MP.snapAug = mine.aug || G.lastAug || []; drawAll(); } else startTimer(); }
           else { const mine = (s.prev.by || {})[API.uid]; MP.snap = un(mine && mine.b ? mine.b : G.lastSub); MP.snapAug = (mine && mine.aug) || G.lastAug || []; MP.sent = G.ri; G.phase = "wait"; mpGo(s.prev.by || {}); }
           note("Partie reprise."); return; }
         const b = root.querySelector("#ar-room"); if (b) b.innerHTML = `<p>Une partie est en cours dans ce salon. Attends qu'elle se termine.</p><div class="ar-row"><button class="ar-b" data-act="mpquit">Quitter le salon</button></div>`; } return; }
-    if (G && G.mp && MP.gid && s.gid === MP.gid && G.phase === "over") { if (d.status === "jeu" && s.r !== MP.sent) { MP.sent = s.r; rpc("ar_submit", { p_room: MP.room, p_r: s.r, p_data: { dead: 1 } }).catch(() => {}); } return; }
+    if (G && G.mp && MP.gid && s.gid === MP.gid && G.phase === "over" && !G.spec) { if (d.status === "jeu" && s.r !== MP.sent) { MP.sent = s.r; rpc("ar_submit", { p_room: MP.room, p_r: s.r, p_data: { dead: 1 } }).catch(() => {}); } return; }
     if (G && G.mp && MP.gid && s.gid === MP.gid) return mpSync(s);
     if (d.status !== "jeu") { if (G && G.mp && G.phase !== "over") { note("La partie a été arrêtée."); stopLoop(); clearInterval(UI.timer); G = null; mpRoom(); return; } if (G) return;
       const sig = JSON.stringify([d.players, d.host]); if (sig === MP.sig) return; MP.sig = sig; const b = root.querySelector("#ar-room"); if (!b) return;
@@ -746,14 +748,34 @@
   }
   function mpSync(s) {
     if (!G || G.phase === "over") return;
-    if (G.phase === "wait") { const n = Object.keys(s.by || {}).length, tot = (MP.st.players || []).length; if (s.r === G.ri) { $("#ar-timer").textContent = `en attente… ${n}/${tot} prêts`; if (++MP.tick % 6 === 0) rpc("ar_force", { p_room: MP.room, p_r: G.ri }).catch(() => {}); }
+    if (G.spec && G.phase === "wait" && s.r > G.ri + 1) { if (s.prev) specApply(s.prev.by || {}, true); G.ri = s.r; G.info = roundInfo(G.ri); MP.sent = -1; return specWait(); }
+    if (G.phase === "wait") { const n = Object.keys(s.by || {}).length, tot = (MP.st.players || []).length; if (s.r === G.ri) { $("#ar-timer").textContent = G.spec ? `👁 préparation… ${Math.max(0, n - 1)} prêt${n - 1 > 1 ? "s" : ""}` : `en attente… ${n}/${tot} prêts`; if (++MP.tick % 6 === 0) rpc("ar_force", { p_room: MP.room, p_r: G.ri }).catch(() => {}); }
       if (s.prev && s.prev.r === G.ri) { MP.tick = 0; mpGo(s.prev.by || {}); } }
   }
   function mpGo(by) {
     let hostD = null; G.players.forEach(p => { if (p.bot || !p.uid) return; const d = by[p.uid]; if (d && MP.st && p.uid === MP.st.host) hostD = d; if (p === G.me || !d || d.afk || d.dead) return; p.board = unpack(d.b); p.lvl = d.lvl || p.lvl; p.aug = (d.aug || []).filter(k => AUG[k]); });
     if (hostD && !MP.host) { G.players.forEach(p => { if (p.bot && hostD.bots && hostD.bots[p.id]) { p.board = unpack(hostD.bots[p.id].b); p.lvl = hostD.bots[p.id].lvl || p.lvl; p.aug = (hostD.bots[p.id].aug || []).filter(k => AUG[k]); } }); if (Array.isArray(hostD.hp)) hostD.hp.forEach((h, i) => { const p = G.players[i]; if (p && p.alive && typeof h === "number" && h > 0) p.hp = h; }); }
-    if (G.duo) { const m = mateOf(G.me), d = m && m.uid && by[m.uid]; if (d && d.gift) receive(d.gift); }
+    if (G.duo && !G.spec && G.me.alive) { const m = mateOf(G.me), d = m && m.uid && by[m.uid]; if (d && d.gift) receive(d.gift); }
+    if (G.spec && MP.host) specApply(by, false);
     G.phase = "plan"; startFight();
+  }
+  // spectateur : après son élimination, on continue de suivre la partie
+  function specStart() {
+    const s = MP.st && MP.st.state; if (!G || !G.mp || !s || s.gid !== MP.gid || MP.st.status !== "jeu") return note("La partie est terminée.");
+    root.querySelectorAll(".ar-modal").forEach(m => m.remove()); G.spec = true; root.classList.add("spec"); music("main");
+    // on se recale sur la manche en cours du salon : équipes du dernier envoi, PV donnés par l'hôte
+    if (s.r > G.ri + 1) { if (s.prev) specApply(s.prev.by || {}, !MP.host); G.ri = s.r; G.info = roundInfo(G.ri); } else { G.ri++; roundStart(); }
+    G.fights = null; UI.sim = UI.view = null; G.phase = "wait"; specWait();
+  }
+  function specApply(by, sync) {
+    let hostD = null; G.players.forEach(p => { if (p.bot || !p.uid) return; const d = by[p.uid]; if (d && MP.st && p.uid === MP.st.host) hostD = d; if (!d || d.afk || d.dead) return; p.board = unpack(d.b); p.lvl = d.lvl || p.lvl; p.aug = (d.aug || []).filter(k => AUG[k]); });
+    if (hostD) { G.players.forEach(p => { if (p.bot && hostD.bots && hostD.bots[p.id]) { p.board = unpack(hostD.bots[p.id].b); p.lvl = hostD.bots[p.id].lvl || p.lvl; p.aug = (hostD.bots[p.id].aug || []).filter(k => AUG[k]); } });
+      if (sync && Array.isArray(hostD.hp)) hostD.hp.forEach((h, i) => { const p = G.players[i]; if (!p || p === G.me || typeof h !== "number") return; p.hp = h; if (h <= 0 && p.alive) { p.alive = false; p.board = []; } }); }
+  }
+  function specWait() {
+    if (!root || !G) return; G.phase = "wait"; G.fights = null; UI.sim = UI.view = null; UI.sel = UI.info = UI.selItem = null; $("#ar-live").innerHTML = ""; const v = $("#ar-view"); if (v) v.remove(); drawAll(); $("#ar-timer").textContent = "👁 les joueurs se préparent…"; $("#ar-tbar").style.width = "0%";
+    if (MP.sent !== G.ri) { MP.sent = G.ri; const d = { dead: 1 }; if (MP.host) { d.bots = {}; G.players.forEach(p => { if (p.bot && p.alive) d.bots[p.id] = { b: packBoard(p), lvl: p.lvl, aug: p.aug || [] }; }); d.hp = G.players.map(p => p.hp); }
+      rpc("ar_submit", { p_room: MP.room, p_r: G.ri, p_data: d }).catch(() => {}); }
   }
   function evBanner() { const e = EVENTS[G.event], m = document.createElement("div"); m.className = "ar-modal"; m.innerHTML = `<div class="ar-sheet ar-over"><div style="font-size:60px">${e[0]}</div><h2>Événement : ${e[1]}</h2><p>${e[2]}</p><button class="ar-b go" data-x>C'est parti</button></div>`; root.appendChild(m); m.onclick = ev => { if (ev.target === m || ev.target.closest("[data-x]")) m.remove(); }; setTimeout(() => m.remove(), 6000); }
 
@@ -779,7 +801,7 @@
     root = document.createElement("div"); root.id = "arena"; document.body.appendChild(root); document.body.classList.add("ar-open");
     menu();
   }
-  function close() { if (MP.room && G && G.mp) mpLeave(); else mpStop(); dragEnd(); muStop(); clearTimeout(UI.cine); stopLoop(); clearInterval(UI.timer); if (root) root.remove(); root = null; document.body.classList.remove("ar-open"); G = null; }
+  function close() { if (root) root.classList.remove("spec"); if (MP.room && G && G.mp) mpLeave(); else mpStop(); dragEnd(); muStop(); clearTimeout(UI.cine); stopLoop(); clearInterval(UI.timer); if (root) root.remove(); root = null; document.body.classList.remove("ar-open"); G = null; }
   function menu() {
     root.innerHTML = `<div class="ar-menu"><h1>⚔️ Wiki Arena</h1>
       <p>Recrute des cartes dans la boutique, place-les sur ton plateau et regarde-les se battre. Trois cartes identiques fusionnent en ★★, puis en ★★★. Réunis des cartes du même univers ou de la même classe pour activer des synergies. Dernier joueur en vie : victoire !</p>
@@ -841,7 +863,7 @@
       return `<button class="ar-tr ${ti >= 0 ? "on t" + Math.min(2, ti + (T.t.length < 3 ? 1 : 0)) : ""}" data-trait="${k}"><span class="ar-tri">${TICO(k)}</span><b>${cnt[k]}</b><span class="ar-trx"><strong>${TNAME(k)}</strong><em>${T.t.map((t, i) => `<i class="${i <= ti ? "ok" : ""}">${t}</i>`).join(" › ")}</em><small>${ti >= 0 ? T.d(T.v[ti]) : `Encore ${T.t[0] - cnt[k]} pour l'activer.`}</small></span></button>`; }).join("") || `<span class="ar-hint">Place des unités du même univers ou de la même classe pour activer des synergies.</span>`;
   }
   function drawBoard() {
-    let h = ""; for (let R = 0; R < ROWS; R++) for (let C = 0; C < COLS; C++) { const mine = R >= 4, x = mine && G.phase === "plan" ? G.me.board.find(u => 4 + u.r === R && u.c === C) : null;
+    let h = ""; for (let R = 0; R < ROWS; R++) for (let C = 0; C < COLS; C++) { const mine = R >= 4, x = mine && (G.phase === "plan" || G.phase === "wait") ? G.me.board.find(u => 4 + u.r === R && u.c === C) : null;
       const rc = mine && UI.sel && G.phase === "plan" && RECO[UN[UI.sel.n].cl].includes(R - 4) && (!x || x === UI.sel);
       h += `<div class="ar-cell ${mine ? "mine" : "foe"} ${x && UI.sel === x ? "sel" : ""} ${rc ? "reco" : ""} ${x && UI.selItem != null ? "tgt" : ""}" style="${hexPos(R, C)}" ${mine ? `data-cell="${R - 4},${C}"` : ""}>${x ? tokenHTML(x.n, x.star, UN[x.n].c, "pp", x.it) : ""}</div>`; }
     if (G.phase === "plan") h += `<span class="ar-rowl f" style="top:${(4 * .75 / 6.25 * 100 + 9).toFixed(2)}%">▲ Devant</span><span class="ar-rowl m" style="top:${(5.5 * .75 / 6.25 * 100 + 9).toFixed(2)}%">◆ Milieu</span><span class="ar-rowl b" style="top:${(7 * .75 / 6.25 * 100 + 9).toFixed(2)}%">▼ Fond</span>`;
@@ -1059,9 +1081,10 @@
     if (a === "vol") { const v = $("#ar-vol"); if (v) v.hidden = !v.hidden; return; }
     if (a === "skip") return cineEnd();
     if (a === "myfight") { if (G && G.fights && UI.fight) watch(UI.fight); return; }
-    if (a === "again") { clearInterval(UI.timer); clearTimeout(UI.cine); stopLoop(); music(null); if (G && G.mp) { G = null; if (MP.host) rpc("ar_end", { p_room: MP.room }).catch(() => {}); return mpRoom(); } return menu(); }
+    if (a === "again") { root.classList.remove("spec"); clearInterval(UI.timer); clearTimeout(UI.cine); stopLoop(); music(null); if (G && G.mp) { const others = G.players.some(q => q.alive && !q.bot && q !== G.me) && !G.winner && G.me.place !== 1, gid = MP.gid; G = null; if (!others) rpc("ar_end", { p_room: MP.room }).catch(() => {}); mpRoom(); MP.deadGid = others ? gid : null; return; } return menu(); }
     if (a === "closeinfo") { UI.info = null; UI.sel = null; UI.selItem = null; return drawAll(); }
     if (a === "guide") return guide();
+    if (a === "spec") return specStart();
     if (a === "fullinfo") { if (UI.info) { UI.info.full = true; drawInfo(); } return; }
     if (a === "event") return evBanner();
     if (a === "augs") { const m = document.createElement("div"); m.className = "ar-modal"; m.innerHTML = `<div class="ar-sheet"><h2>Tes améliorations</h2>${G.me.aug.map(k => `<p>${AUG[k][0]} <b>${AUG[k][1]}</b> : ${AUG[k][2]}</p>`).join("")}<button class="ar-b" data-x>Fermer</button></div>`; root.appendChild(m); m.onclick = e => { if (e.target === m || e.target.closest("[data-x]")) m.remove(); }; return; }
@@ -1081,7 +1104,7 @@
       <p class="ar-hint">Unités : ${SET.filter(n => UN[n].o.includes(k) || UN[n].cl === k).map(n => `${esc(n)} (${UN[n].c})`).join(", ")}</p><button class="ar-b" data-x>Fermer</button></div>`;
     root.appendChild(m); m.onclick = e => { if (e.target === m || e.target.closest("[data-x]")) m.remove(); };
   }
-  function startTimer() { saveGame(); if (G.msg) { note(G.msg); G.msg = null; } showChoice(); muPrep(G.info.boss ? "boss" + BOSS[G.info.boss].t : G.info.pve >= 0 ? null : "pvp"); clearInterval(UI.timer); UI.tleft = UI.ttot = G.ri < 3 ? 25 : 40; const tick = () => { if (!root || !G || G.phase !== "plan") return clearInterval(UI.timer); $("#ar-timer").textContent = "⏳ " + UI.tleft; $("#ar-tbar").style.width = UI.tleft / UI.ttot * 100 + "%"; if (UI.tleft <= 5 && UI.tleft > 0) sfx("tick"); if (UI.tleft-- <= 0) { clearInterval(UI.timer); fight(); } }; tick(); UI.timer = setInterval(tick, 1000); }
+  function startTimer() { if (G.spec) return specWait(); saveGame(); if (G.msg) { note(G.msg); G.msg = null; } showChoice(); muPrep(G.info.boss ? "boss" + BOSS[G.info.boss].t : G.info.pve >= 0 ? null : "pvp"); clearInterval(UI.timer); UI.tleft = UI.ttot = G.ri < 3 ? 25 : 40; const tick = () => { if (!root || !G || G.phase !== "plan") return clearInterval(UI.timer); $("#ar-timer").textContent = "⏳ " + UI.tleft; $("#ar-tbar").style.width = UI.tleft / UI.ttot * 100 + "%"; if (UI.tleft <= 5 && UI.tleft > 0) sfx("tick"); if (UI.tleft-- <= 0) { clearInterval(UI.timer); fight(); } }; tick(); UI.timer = setInterval(tick, 1000); }
   /* ---------- combat affiché ---------- */
   // plateau incomplet : on complète avec le banc
   function fillBoard(p) {
@@ -1101,9 +1124,9 @@
   function watch(f) {
     UI.view = f; UI.sim = f.S; UI.flip = f.b === G.me; UI.tok = {}; $("#ar-live").innerHTML = ""; $("#ar-cells").querySelectorAll(".ar-tok").forEach(x => x.remove());
     f.S.units.forEach(u => { if (u.alive) addTok(u); });
-    $("#ar-timer").textContent = f === UI.fight ? "contre " + (f.b === G.me ? f.a.name : foeName(f)) : `👁 ${f.a.name} contre ${foeName(f)}`;
-    let v = $("#ar-view"); if (f !== UI.fight) { if (!v) { v = document.createElement("div"); v.id = "ar-view"; v.className = "ar-view"; $("#ar-board").appendChild(v); }
-      v.innerHTML = `<span>👁 ${esc(f.a.name)} (en bas) contre ${esc(foeName(f))} (en haut)</span><button class="ar-b" data-act="myfight">Revenir à mon combat</button>`; } else if (v) v.remove();
+    $("#ar-timer").textContent = f === UI.fight && !G.spec ? "contre " + (f.b === G.me ? f.a.name : foeName(f)) : `👁 ${f.a.name} contre ${foeName(f)}`;
+    let v = $("#ar-view"); if (f !== UI.fight || G.spec) { if (!v) { v = document.createElement("div"); v.id = "ar-view"; v.className = "ar-view"; $("#ar-board").appendChild(v); }
+      v.innerHTML = `<span>👁 ${esc(f.a.name)} (en bas) contre ${esc(foeName(f))} (en haut)</span>${G.spec ? "" : `<button class="ar-b" data-act="myfight">Revenir à mon combat</button>`}`; } else if (v) v.remove();
     drawPlayers(); drawDmg();
   }
   // si je suis le camp du haut dans la simulation, on retourne l'affichage pour que mon équipe reste en bas
@@ -1117,7 +1140,7 @@
     if (!root || !G || !G.fights) return stopLoop();
     const ended = roundTick(); G.fights.forEach(f => { if (f === UI.view) showEvents(f.S); f.S.ev.length = 0; });
     for (const f of ended) { const S = f.S; { f.done = true; const g0 = G.me.gold; resolveFight(f, S);
-        if (f === UI.fight) { G.hist[G.ri] = f.res.w ? 1 : 0; sfx(f.res.w ? "win" : "lose"); const b = $("#ar-banner"); b.hidden = false; b.className = "ar-banner " + (f.res.w ? "win" : "lose");
+        if (f === UI.fight && !G.spec) { G.hist[G.ri] = f.res.w ? 1 : 0; sfx(f.res.w ? "win" : "lose"); const b = $("#ar-banner"); b.hidden = false; b.className = "ar-banner " + (f.res.w ? "win" : "lose");
           b.innerHTML = (f.res.w ? `Victoire !<small>+${G.me.gold - g0} 🪙</small>` : `Défaite<small>−${f.res.d} PV</small>`) + (f.res.it && f.res.it.length || f.res.pick ? `<small class="ar-loot">Butin : ${(f.res.it || []).map(id => ITEM[id].ic).join(" ")}${f.res.pick ? " + 1 au choix 🎁" : ""}</small>` : "") + (G.fights.some(x => !x.done) ? `<em>Les autres combats continuent : touche un joueur pour regarder.</em>` : "");
           setTimeout(() => { if (root) $("#ar-banner").hidden = true; }, 2200); drawTop(); drawShop(); drawItems();
           if (G.duo) { const mate = G.players.find(q => q.team === G.me.team && q !== G.me), pf = mate && G.fights.find(x => x !== f && !x.done && (x.a === mate || x.b === mate)); if (pf) { if (f.res.w) note("🤝 Tes survivants partent en renfort chez " + mate.name + " !"); setTimeout(() => { if (root && G && G.fights && !pf.done && UI.view === f) watch(pf); }, 1300); } } }
@@ -1142,7 +1165,7 @@
       else if (e.k === "rein") { fx("sudden", UI.flip ? 4 : 3.5, 3, "🤝 Renforts de " + e.n + " !", 1800); sfx("lvl"); }
       else if (e.k === "sudden") { fx("sudden", UI.flip ? 4 : 3.5, 3, "⚡ Mort subite !", 1800); sfx("go"); }
       else if (e.k === "zone") { const z = fx("zone side" + VS(e.side), e.R, e.C, null, 500); z.style.setProperty("--zr", e.r); }
-      else if (e.k === "flash") { const b = $("#ar-board"); b.classList.add("flash"); setTimeout(() => b.classList.remove("flash"), 350); }
+      else if (e.k === "flash") { const v = document.createElement("div"); v.className = "ar-flashv"; $("#ar-board").appendChild(v); setTimeout(() => v.remove(), 420); }
       else if (e.k === "atk" || e.k === "shot") { const a = S.units[e.a], b = S.units[e.b], ea = UI.tok[e.a]; if (!a || !b) continue;
         if (e.k === "atk" && ea) { { const k = UI.flip ? -30 : 30; ea.style.setProperty("--lx", ((b.C + (b.R & 1) * .5) - (a.C + (a.R & 1) * .5)) * k + "%"); ea.style.setProperty("--ly", (b.R - a.R) * k + "%"); } ea.classList.remove("lunge"); void ea.offsetWidth; ea.classList.add("lunge"); }
         else if (e.k === "shot") { const s = fx("shot side" + VS(a.side), a.R, a.C, null, 260); requestAnimationFrame(() => { s.style.cssText = VP(b.R, b.C); }); } }
@@ -1151,16 +1174,17 @@
   }
   function endRound() {
     if (!root || !G) return; const v = $("#ar-view"); if (v) v.remove(); $("#ar-banner").hidden = true; UI.sim = UI.view = null; G.fights = null; dragEnd(); UI.sel = null; UI.info = null;
-    roundEnd(); if (G.phase === "over") return over(); music("main"); drawAll(); startTimer();
+    roundEnd(); if (G.phase === "over") return over(); if (G.spec) return specWait(); music("main"); drawAll(); startTimer();
   }
   const fmt = n => Math.round(n).toLocaleString("fr-FR");
   function over() {
+    if (G.spec) { music(null); const m = document.createElement("div"); m.className = "ar-modal"; m.innerHTML = `<div class="ar-sheet ar-over"><h2>🏁 Partie terminée</h2><p>${G.winner ? "Victoire de <b>" + esc(G.winner) + "</b> !" : "Plus personne en vie."}</p><div class="ar-row"><button class="ar-b go" data-act="again">Retour au salon</button><button class="ar-b" data-act="quit">Quitter</button></div></div>`; root.appendChild(m); return; }
     logGame(); let pl = G.me.place; if (pl === 1) return cine(); if (G.duo) pl = Math.ceil(pl / 2);
     music(null); sfx("lose"); const m = document.createElement("div"); m.className = "ar-modal"; const L = G.lastBoard || [];
     m.innerHTML = `<div class="ar-sheet ar-over"><h2>${pl <= 4 || G.duo ? (pl === 2 ? "🥈 " : pl === 3 ? "🥉 " : "") + pl + "e place" : pl + "e place"}</h2><p>${G.duo ? `Ton équipe termine ${pl}e sur 4` : `Tu termines ${pl}e sur ${G.n}`}, à la manche ${G.info.st}-${G.info.k}. ${G.stat.wins} combat${G.stat.wins > 1 ? "s" : ""} gagné${G.stat.wins > 1 ? "s" : ""} sur ${G.stat.fights}.</p>
       ${L.length ? `<div class="ar-ctab">${L.map(x => { const st = x.st || { d: 0, k: 0, h: 0, t: 0 }; return `<div class="ar-crow c${UN[x.n].c}"><div class="ar-cmini" style="${bg(x.n)}"></div><div class="ar-cn"><b>${esc(artOf(x.n).nm)}</b><small>${stars(x.star)}</small></div><span>⚔️ ${fmt(st.d)}</span><span>💀 ${st.k}</span><span>💚 ${fmt(st.h)}</span><span>🛡️ ${fmt(st.t)}</span></div>`; }).join("")}</div>` : ""}
       <p class="ar-rew" id="ar-rew"></p>
-      <div class="ar-row"><button class="ar-b go" data-act="again">Rejouer</button><button class="ar-b" data-act="quit">Quitter</button></div></div>`;
+      <div class="ar-row">${G.mp && G.players.filter(q => q.alive).length > 1 ? `<button class="ar-b go" data-act="spec">👁 Observer la suite</button>` : ""}<button class="ar-b ${G.mp ? "" : "go"}" data-act="again">${G.mp ? "Retour au salon" : "Rejouer"}</button><button class="ar-b" data-act="quit">Quitter</button></div></div>`;
     root.appendChild(m);
   }
   /* ---------- cinématique de victoire ---------- */
