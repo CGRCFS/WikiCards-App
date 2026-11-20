@@ -174,13 +174,28 @@
   const XPN = [2, 2, 6, 10, 20, 36, 56, 80], POOLN = [22, 20, 17, 10, 9], STAGEDMG = [0, 0, 2, 3, 5, 7, 10, 15, 20, 30];
   const BOTN = ["Kévin", "Josiane", "Gégé", "Mamie Lucette", "Dylan", "Brigitte", "Roger", "Cindy"];
 
+  // événements : une règle spéciale pour toute la partie
+  const EVENTS = {
+    paie: ["💰", "Jour de paie", "Tout le monde gagne 2 or de plus à chaque manche."],
+    soldes: ["🏷️", "Soldes", "Relancer la boutique ne coûte que 1 or."],
+    lune: ["🌕", "Pleine lune", "Toutes les unités attaquent 25 % plus vite."],
+    marche: ["🕶️", "Marché noir", "Acheter de l'XP ne coûte que 3 or."],
+    subite: ["⚡", "Mort subite", "La mort subite commence après 12 s de combat au lieu de 30."],
+    geants: ["🗿", "Géants", "Toutes les unités ont 50 % de PV en plus : les combats durent."],
+    chats: ["🐈", "Nuit des chats", "Chaque équipe compte un Chat de plus pour la synergie Chat."],
+    penurie: ["📉", "Pénurie", "Il y a deux fois moins d'exemplaires de chaque carte dans la réserve."],
+    brouillard: ["🌫️", "Brouillard", "On ne voit plus l'équipe des autres joueurs et on ne peut pas regarder leurs combats."],
+    toutourien: ["🎰", "Tout ou rien", "Une victoire rapporte 3 or de plus, mais une défaite fait perdre deux fois plus de PV."],
+  };
+  let EVT = null;   // événement de la partie en cours
+
   /* ---------- outils ---------- */
   const rng32 = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
   const NB = [[[0, -1], [0, 1], [-1, -1], [-1, 0], [1, -1], [1, 0]], [[0, -1], [0, 1], [-1, 0], [-1, 1], [1, 0], [1, 1]]];
   const ROWS = 8, COLS = 7;
   const hd = (r1, c1, r2, c2) => { const x1 = c1 - (r1 - (r1 & 1)) / 2, x2 = c2 - (r2 - (r2 & 1)) / 2, dx = x1 - x2, dz = r1 - r2; return Math.max(Math.abs(dx), Math.abs(dz), Math.abs(dx + dz)); };
   const dist = (a, b) => hd(a.R, a.C, b.R, b.C);
-  function traitsOf(list) { const seen = new Set(), n = {}; list.forEach(x => { if (seen.has(x.n) || !UN[x.n]) return; seen.add(x.n); const d = UN[x.n]; [...d.o, d.cl].forEach(k => n[k] = (n[k] || 0) + 1); }); return n; }
+  function traitsOf(list) { const seen = new Set(), n = {}; if (EVT === "chats" && list.length) n.chat = 1; list.forEach(x => { if (seen.has(x.n) || !UN[x.n]) return; seen.add(x.n); const d = UN[x.n]; [...d.o, d.cl].forEach(k => n[k] = (n[k] || 0) + 1); }); return n; }
   const tier = (k, n) => { let i = -1; TR[k].t.forEach((t, j) => { if (n >= t) i = j; }); return i; };
 
   /* ---------- simulation de combat ---------- */
@@ -191,6 +206,7 @@
     if (x.raw) Object.assign(u, { cost: x.raw.cost || 1, cl: "bag", o: [], maxhp: x.raw.hp, ad: x.raw.ad, as: x.raw.as, range: x.raw.rg || 1, armor: x.raw.ar || 15, mr: x.raw.ar || 15, maxMana: x.raw.spell ? x.raw.m || 100 : 0, spell: x.raw.spell || null, mon: 1, boss: x.raw.boss || 0, art: x.raw.art }, x.raw.ex || {});
     else { const d = UN[x.n], b = CB[d.cl], st = STAR[u.star - 1];
       Object.assign(u, { cost: d.c, cl: d.cl, o: d.o, maxhp: HPB[d.c - 1] * b.hp * st, ad: ADB[d.c - 1] * b.ad * st, as: b.as, range: b.rg, armor: b.ar, mr: b.ar, maxMana: d.s.m || b.m, spell: d.s }); }
+    if (EVT === "lune") u.as *= 1.25; if (EVT === "geants") u.maxhp *= 1.5;
     u.items = (x.it || []).slice(); u.it = {};
     u.items.forEach(id => { const I = ITEM[id], st = I.st; u.it[id] = 1; if (st.ad) u.ad *= 1 + st.ad; if (st.as) u.as *= 1 + st.as; if (st.sp) u.sp += st.sp; if (st.mana) u.mana += st.mana; if (st.ar) u.armor += st.ar; if (st.mr) u.mr += st.mr; if (st.hp) u.maxhp += st.hp; if (st.crit) u.critC += st.crit; });
     const I = u.it; if (I.opinel) u.pen = .3; if (I.tournevis) u.ls += .15; if (I.pelle) u.manaAtk += 6; if (I.ciseaux) u.critD += .35; if (I.ventilo) u.range += 1; if (I.elastique) u.dodge += .2; if (I.gourde) u.regen += .02;
@@ -199,7 +215,7 @@
     return u;
   }
   function simInit(A, B, seed) {
-    const S = { units: [], t: 0, rng: rng32(seed), ev: [], delayed: [], grid: {}, gold: [0, 0], goldWin: [0, 0], over: false, win: -1 };
+    const S = { units: [], t: 0, rng: rng32(seed), ev: [], delayed: [], grid: {}, gold: [0, 0], goldWin: [0, 0], over: false, win: -1, sdT: EVT === "subite" ? 12 : 30 };
     [A, B].forEach((T, side) => T.units.forEach(x => { const u = mkUnit(S, side, x); while (S.grid[u.R + "," + u.C]) { u.C = (u.C + 1) % COLS; } S.grid[u.R + "," + u.C] = u; S.units.push(u); }));
     [A, B].forEach((T, side) => { const cnt = traitsOf(T.units), mine = S.units.filter(u => u.side === side), foes = S.units.filter(u => u.side !== side);
       Object.keys(cnt).forEach(k => { const ti = tier(k, cnt[k]); if (ti < 0) return; const v = TR[k].v[ti], mem = mine.filter(u => u.o && (u.o.includes(k) || u.cl === k) && !u.mon);
@@ -239,10 +255,10 @@
   const bsum = (S, u, s) => { let v = 0; for (const b of u.buffs) if (b.s === s && b.until > S.t) v += b.v; return v; };
   const foesOf = (S, u) => S.units.filter(e => e.alive && e.side !== u.side), alliesOf = (S, u) => S.units.filter(e => e.alive && e.side === u.side);
   const targetable = (S, e) => e.alive && e.untargT <= S.t;
-  function heal(S, u, v, quiet, by) { if (!u.alive || v <= 0) return; if (S.t > 30) v *= .4; if (u.ahT > S.t) v *= .5; const h = Math.min(v, u.maxhp - u.hp); u.hp += h; const hb = by || u; (hb.owner || hb).healed += h; if (!quiet && h > 1) S.ev.push({ k: "heal", u: u.uid, v: Math.round(h) }); }
+  function heal(S, u, v, quiet, by) { if (!u.alive || v <= 0) return; if (S.t > S.sdT) v *= .4; if (u.ahT > S.t) v *= .5; const h = Math.min(v, u.maxhp - u.hp); u.hp += h; const hb = by || u; (hb.owner || hb).healed += h; if (!quiet && h > 1) S.ev.push({ k: "heal", u: u.uid, v: Math.round(h) }); }
   function dmg(S, src, t, amt, type, o) {
     o = o || {}; if (!t.alive || amt <= 0) return 0;
-    if (src) amt *= src.amp + bsum(S, src, "amp"); if (S.t > 30) amt *= 1 + (S.t - 30) * .12; if (src && bsum(S, src, "weak")) amt *= Math.max(.2, 1 - bsum(S, src, "weak"));
+    if (src) amt *= src.amp + bsum(S, src, "amp"); if (S.t > S.sdT) amt *= 1 + (S.t - S.sdT) * .12; if (src && bsum(S, src, "weak")) amt *= Math.max(.2, 1 - bsum(S, src, "weak"));
     let res = Math.max(0, type === "p" ? t.armor + bsum(S, t, "armor") : type === "m" ? t.mr + bsum(S, t, "armor") : 0); if (type === "p" && src && src.pen) res *= 1 - src.pen;
     amt *= 100 / (100 + res); if (type === "m" && t.it.bouchons) amt *= .7; if (o.atk && t.it.couvercle) amt = Math.max(amt * .3, amt - 15); amt *= 1 - Math.min(.6, t.red); if (t.vulnT > S.t) amt *= 1 + t.vuln;
     let left = amt; if (t.shield > 0) { const a = Math.min(t.shield, left); t.shield -= a; left -= a; }
@@ -286,7 +302,7 @@
         break; }
       case "aoeT": within(S, foes, t.R, t.C, sp.r).forEach(e => applyHit(S, u, e, sp, SD(u, sp.p))); S.ev.push({ k: "zone", R: t.R, C: t.C, r: sp.r, side: u.side }); break;
       case "aoeS": { let tot = 0; within(S, foes, u.R, u.C, sp.r).forEach(e => { const h0 = e.hp + e.shield; applyHit(S, u, e, sp, SD(u, sp.p)); tot += h0 - (e.hp + e.shield); }); if (sp.ls) heal(S, u, tot * sp.ls); S.ev.push({ k: "zone", R: u.R, C: u.C, r: sp.r, side: u.side }); break; }
-      case "line": { const pts = []; let x0 = u.C + (u.R & 1) * .5, x1 = t.C + (t.R & 1) * .5, dx = x1 - x0, dy = t.R - u.R, L = Math.hypot(dx, dy) || 1; dx /= L; dy /= L;
+      case "line": { const pts = []; let x0 = u.C + (u.R & 1) * .5, x1 = t.C + (t.R & 1) * .5, dx = x1 - x0, dy = t.R - u.R, L = Math.sqrt(dx * dx + dy * dy) || 1; dx /= L; dy /= L;
         foes.forEach(e => { const ex = e.C + (e.R & 1) * .5 - x0, ey = e.R - u.R, along = ex * dx + ey * dy, off = Math.abs(ex * dy - ey * dx); if (along > -.2 && off < .75) pts.push(e); });
         pts.forEach(e => applyHit(S, u, e, sp, SD(u, sp.p))); S.ev.push({ k: "beam", a: u.uid, dx, dy }); break; }
       case "multi": { const L = (sp.rndT ? foes.slice().sort(() => S.rng() - .5) : foes.slice().sort((a, b) => dist(u, a) - dist(u, b))).slice(0, sp.cnt); let tot = 0;
@@ -333,7 +349,7 @@
         else if (S.rng() < .25) { for (const e of foes) if (dist(u, e) <= u.range) { u.tgt = e; break; } } }
     }
     const a = S.units.some(u => u.alive && u.side === 0), b = S.units.some(u => u.alive && u.side === 1);
-    if (S.t >= 30 && !S.sudden) { S.sudden = true; S.ev.push({ k: "sudden" }); }
+    if (S.t >= S.sdT && !S.sudden) { S.sudden = true; S.ev.push({ k: "sudden" }); }
     if (!a || !b || S.t >= 90) { S.over = true; const hp = s => S.units.filter(u => u.alive && u.side === s).reduce((x, u) => x + u.hp / u.maxhp, 0);
       S.win = a && !b ? 0 : b && !a ? 1 : hp(0) > hp(1) ? 0 : hp(1) > hp(0) ? 1 : -1; S.left = [0, 1].map(s => S.units.filter(u => u.alive && u.side === s && !u.sum).length); }
   }
@@ -356,12 +372,19 @@
   /* ---------- partie ---------- */
   let G = null;
   const newPlayer = (id, name, bot) => ({ id, name, bot, hp: 100, gold: 0, lvl: 1, xp: 0, board: [], bench: Array(9).fill(null), items: [], streak: 0, alive: true, shop: [], lock: false, place: 0 });
-  function newGame(diff, seed) {
-    const rng = rng32(seed || (Date.now() & 0x7fffffff)), names = BOTN.slice().sort(() => rng() - .5);
-    G = { diff, rng, stat: { fights: 0, wins: 0 }, ri: 0, phase: "plan", players: [newPlayer(0, "Toi", false)], pool: {}, out: 0, log: [] };
-    for (let i = 1; i < 8; i++) { G.players.push(newPlayer(i, names[i - 1], true)); G.players[i].av = ["🦊", "🐸", "🐼", "🐙", "🦉", "🐷", "🐯", "🦄"][i]; }
-    SET.forEach(n => G.pool[n] = POOLN[UN[n].c - 1]);
-    G.me = G.players[0]; G.me.av = "👑"; G.hist = {}; { const pick = t => Object.keys(BOSS).filter(k => BOSS[k].t === t).sort(() => rng() - .5); const m = pick(2); G.boss = { 2: pick(1)[0], 3: m[0], 4: m[1], 5: pick(3)[0] }; } roundStart(); return G;
+  // o : { event, humans: [{ uid, name }], me: index, bots: bool } pour le multijoueur
+  function newGame(diff, seed, o) {
+    o = o || {}; seed = seed || (Date.now() & 0x7fffffff); const rng = rng32(seed), names = BOTN.slice().sort(() => rng() - .5), AV = ["👑", "🦊", "🐸", "🐼", "🐙", "🦉", "🐷", "🐯", "🦄"];
+    EVT = o.event && EVENTS[o.event] ? o.event : null;
+    G = { diff, seed, rng, event: EVT, stat: { fights: 0, wins: 0 }, ri: 0, phase: "plan", players: [], pool: {}, out: 0, log: [], hist: {}, mp: !!o.humans };
+    const H = o.humans || [{ name: "Toi" }]; H.forEach((h, i) => { const p = newPlayer(i, h.name, false); p.uid = h.uid || null; p.av = AV[i]; G.players.push(p); });
+    if (!o.humans || o.bots !== false) for (let i = H.length; i < 8; i++) { const p = newPlayer(i, names[i - 1], true); p.av = AV[i] || "🤖"; G.players.push(p); }
+    G.n = G.players.length; SET.forEach(n => G.pool[n] = Math.ceil(POOLN[UN[n].c - 1] / (EVT === "penurie" ? 2 : 1)));
+    G.me = G.players[o.me || 0]; G.me.av = "👑";
+    { const pick = t => Object.keys(BOSS).filter(k => BOSS[k].t === t).sort(() => rng() - .5); const m = pick(2); G.boss = { 2: pick(1)[0], 3: m[0], 4: m[1], 5: pick(3)[0] }; }
+    // chacun commence avec une unité à 1 or offerte
+    const ones = SET.filter(n => UN[n].c === 1); G.rng = rng32(seed ^ ((o.me || 0) + 1) * 7919); G.players.forEach(p => { const n = ones[Math.floor(G.rng() * ones.length)]; G.pool[n]--; p.bench[0] = { n, star: 1 }; });
+    roundStart(); return G;
   }
   // manches : 3 manches de monstres, puis des blocs de 6 combats + 1 manche de monstres
   // la dernière manche de chaque acte (à partir du 2e) est un boss
@@ -392,17 +415,18 @@
   }
   const sellVal = x => { const c = UN[x.n].c; return x.star === 1 ? c : c * Math.pow(3, x.star - 1) - 1; };
   function sell(p, x) { takeItems(p, x); const bi = p.board.indexOf(x); if (bi >= 0) p.board.splice(bi, 1); else { const i = p.bench.indexOf(x); if (i < 0) return; p.bench[i] = null; } p.gold += sellVal(x); G.pool[x.n] += Math.pow(3, x.star - 1); }
-  function buyXp(p) { if (p.gold < 4 || p.lvl >= 9) return false; p.gold -= 4; addXp(p, 4); return true; }
+  const xpCost = () => EVT === "marche" ? 3 : 4, rollCost = () => EVT === "soldes" ? 1 : 2;
+  function buyXp(p) { if (p.gold < xpCost() || p.lvl >= 9) return false; p.gold -= xpCost(); addXp(p, 4); return true; }
   function addXp(p, v) { if (p.lvl >= 9) return; p.xp += v; while (p.lvl < 9 && p.xp >= XPN[p.lvl - 1]) { p.xp -= XPN[p.lvl - 1]; p.lvl++; } }
-  function reroll(p) { if (p.gold < 2) return false; p.gold -= 2; rollShop(p); return true; }
-  const income = (p, ri) => { const base = ri < 4 ? Math.min(5, 2 + ri) : 5, st = Math.abs(p.streak); return base + Math.min(5, Math.floor(p.gold / 10)) + (st >= 5 ? 3 : st >= 4 ? 2 : st >= 2 ? 1 : 0); };
+  function reroll(p) { if (p.gold < rollCost()) return false; p.gold -= rollCost(); rollShop(p); return true; }
+  const income = (p, ri) => { const base = ri < 4 ? Math.min(5, 2 + ri) : 5, st = Math.abs(p.streak); return base + (EVT === "paie" ? 2 : 0) + Math.min(5, Math.floor(p.gold / 10)) + (st >= 5 ? 3 : st >= 4 ? 2 : st >= 2 ? 1 : 0); };
   function roundStart() {
     const ri = G.ri, inf = roundInfo(ri); G.info = inf; G.phase = "plan";
     G.players.filter(p => p.alive).forEach(p => {
       const mul = p.bot ? ({ facile: .75, normal: 1, difficile: 1.2 })[G.diff] : 1;
       p.gold += Math.round(income(p, ri) * mul); if (ri > 0) addXp(p, 2);
       if (!p.lock) rollShop(p); p.lock = false;
-      if (p.bot) botTurn(p);
+      if (p.bot && (!G.mp || MP.host)) botTurn(p);
     });
   }
   /* ---------- bots ---------- */
@@ -416,8 +440,8 @@
         if (p.gold - c < (sc >= 4 ? 0 : reserve())) return; if (!need && sc < 3.5) return;
         if (p.bench.indexOf(null) < 0) { const w = p.bench.filter(Boolean).sort((a, b) => score(a.n) * a.star - score(b.n) * b.star)[0]; if (w && score(w.n) < sc && w.star === 1) sell(p, w); else return; }
         buy(p, i); });
-      if (p.lvl < 9 && p.gold - 4 >= reserve() && owned(p).length >= p.lvl) { buyXp(p); }
-      if (pass < 3 && p.gold - 2 >= reserve() + (hard ? 0 : 10) && !easy) reroll(p); else break;
+      if (p.lvl < 9 && p.gold - xpCost() >= reserve() && owned(p).length >= p.lvl) { buyXp(p); }
+      if (pass < 3 && p.gold - rollCost() >= reserve() + (hard ? 0 : 10) && !easy) reroll(p); else break;
     }
     // placement : les meilleures unités sur le plateau, mêlée devant, distance derrière
     const all = owned(p).sort((a, b) => UN[b.n].c * b.star * b.star + score(b.n) * .3 - (UN[a.n].c * a.star * a.star + score(a.n) * .3));
@@ -429,7 +453,7 @@
     const front = on.filter(x => CB[UN[x.n].cl].rg === 1), back = on.filter(x => CB[UN[x.n].cl].rg > 1), cols = [3, 2, 4, 1, 5, 0, 6];
     front.forEach((x, i) => { x.r = i < 7 ? 0 : 1; x.c = cols[i % 7]; }); back.forEach((x, i) => { x.r = i < 7 ? 3 : 2; x.c = cols[i % 7]; });
   }
-  const teamOf = p => ({ units: p.board.map(x => ({ n: x.n, star: x.star, r: x.r, c: x.c, ref: x, it: x.it || [] })) });
+  const teamOf = p => ({ units: G.mp && p === G.me && MP.snap ? MP.snap : p.board.map(x => ({ n: x.n, star: x.star, r: x.r, c: x.c, ref: x, it: x.it || [] })) });
   function pveTeam(inf) {
     const L = []; let i = 0; const add = (n, k, sc, row) => { for (let j = 0; j < k; j++) { const m = MON[n]; L.push({ n, raw: { hp: m[0] * sc, ad: m[1] * sc, as: m[2], art: n }, r: row != null ? row : i > 4 ? 1 : 0, c: [3, 1, 5, 2, 4, 0, 6][i % 7] }); i++; } };
     if (!inf.boss) { PVE[inf.pve].forEach(([n, k]) => add(n, k, 1)); return { units: L }; }
@@ -440,32 +464,36 @@
   }
   // prépare les affrontements de la manche ; renvoie le combat du joueur
   function prepareFights() {
-    const inf = G.info, alive = G.players.filter(p => p.alive), seed = () => Math.floor(G.rng() * 1e9); G.fights = [];
+    const inf = G.info, alive = G.players.filter(p => p.alive), R = rng32((G.seed ^ Math.imul(G.ri + 1, 2654435761)) | 0), seed = () => Math.floor(R() * 1e9); G.fights = [];
     if (inf.pve >= 0) alive.forEach(p => G.fights.push({ a: p, b: null, B: pveTeam(inf), seed: seed() }));
-    else { const L = alive.slice().sort(() => G.rng() - .5); while (L.length >= 2) { const a = L.pop(), b = L.pop(); G.fights.push({ a, b, B: teamOf(b), seed: seed() }); }
-      if (L.length) { const a = L[0], o = alive.filter(p => p !== a), g = o[Math.floor(G.rng() * o.length)]; G.fights.push({ a, b: null, ghost: g, B: teamOf(g), seed: seed() }); } }
-    G.fights.forEach(f => { if (f.b === G.me) { const t = f.a; f.a = f.b; f.b = t; f.B = teamOf(t); } f.A = teamOf(f.a); });
-    return G.fights.find(f => f.a === G.me);
+    else { const L = alive.slice(); for (let i = L.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)), t = L[i]; L[i] = L[j]; L[j] = t; } while (L.length >= 2) { const a = L.pop(), b = L.pop(); G.fights.push({ a, b, B: teamOf(b), seed: seed() }); }
+      if (L.length) { const a = L[0], o = alive.filter(p => p !== a), g = o[Math.floor(R() * o.length)]; G.fights.push({ a, b: null, ghost: g, B: teamOf(g), seed: seed() }); } }
+    G.fights.forEach(f => { if (f.b && f.a.id > f.b.id) { const t = f.a; f.a = f.b; f.b = t; } if (f.b) f.B = teamOf(f.b); f.A = teamOf(f.a); });
+    return G.fights.find(f => f.a === G.me || f.b === G.me);
   }
   function resolveFight(f, S) {
-    if (f.a === G.me) { S.units.forEach(u => { if (u.side === 0 && u.ref) { const st = u.ref.st = u.ref.st || { d: 0, k: 0, h: 0, t: 0, f: 0 }; st.d += u.dealt; st.k += u.kills; st.h += u.healed; st.t += u.taken; st.f++; } }); G.stat.fights++; if (S.win === 0) G.stat.wins++; }
-    const inf = G.info, res = [];
-    const lose = (p, n) => { const d = STAGEDMG[Math.min(inf.st, STAGEDMG.length - 1)] + n * (inf.pve >= 0 ? 1 : 2); p.hp -= d; p.streak = p.streak < 0 ? p.streak - 1 : -1; return d; };
-    const win = (p, side) => { p.streak = inf.pve >= 0 ? p.streak : p.streak > 0 ? p.streak + 1 : 1; p.gold += (inf.pve >= 0 ? 0 : 1) + S.goldWin[side]; };
+    const my = f.a === G.me ? 0 : f.b === G.me ? 1 : -1;
+    if (my >= 0) { S.units.forEach(u => { if (u.side === my && u.ref) { const st = u.ref.st = u.ref.st || { d: 0, k: 0, h: 0, t: 0, f: 0 }; st.d += u.dealt; st.k += u.kills; st.h += u.healed; st.t += u.taken; st.f++; } }); G.stat.fights++; if (S.win === my) G.stat.wins++; }
+    const inf = G.info;
+    const lose = (p, n) => { let d = STAGEDMG[Math.min(inf.st, STAGEDMG.length - 1)] + n * (inf.pve >= 0 ? 1 : 2); if (EVT === "toutourien") d *= 2; p.hp -= d; p.streak = p.streak < 0 ? p.streak - 1 : -1; return d; };
+    const win = (p, side) => { p.streak = inf.pve >= 0 ? p.streak : p.streak > 0 ? p.streak + 1 : 1; p.gold += (inf.pve >= 0 ? 0 : 1 + (EVT === "toutourien" ? 3 : 0)) + S.goldWin[side]; };
     f.a.gold += S.gold[0]; if (f.b) f.b.gold += S.gold[1];
+    let ra, rb = null;
     if (inf.pve >= 0) { const t = inf.boss ? BOSS[inf.boss].t : 0, w = S.win === 0;
-      if (w) { win(f.a, 0); f.a.gold += t ? 2 + t * 2 : 2; f.res = { w: 1 }; } else f.res = { w: 0, d: lose(f.a, inf.boss ? 2 + t * 2 : S.left[1]) };
-      f.res.it = t ? (w ? giveItems(f.a, t === 3 ? 1 : 2, t) : giveItems(f.a, 1, 0)) : giveItems(f.a, 1, 0); return; }
-    if (S.win === 0) { win(f.a, 0); f.res = { w: 1 }; if (f.b) lose(f.b, S.left[0]); }
-    else if (S.win === 1) { f.res = { w: 0, d: lose(f.a, S.left[1]) }; if (f.b) win(f.b, 1); }
-    else { f.res = { w: 0, d: lose(f.a, 1) }; if (f.b) lose(f.b, 1); }
+      if (w) { win(f.a, 0); f.a.gold += t ? 2 + t * 2 : 2; ra = { w: 1 }; } else ra = { w: 0, d: lose(f.a, inf.boss ? 2 + t * 2 : S.left[1]) };
+      ra.it = t ? (w ? giveItems(f.a, t === 3 ? 1 : 2, t) : giveItems(f.a, 1, 0)) : giveItems(f.a, 1, 0); }
+    else if (S.win === 0) { win(f.a, 0); ra = { w: 1 }; if (f.b) rb = { w: 0, d: lose(f.b, S.left[0]) }; }
+    else if (S.win === 1) { ra = { w: 0, d: lose(f.a, S.left[1]) }; if (f.b) { win(f.b, 1); rb = { w: 1 }; } }
+    else { ra = { w: 0, d: lose(f.a, 1) }; if (f.b) rb = { w: 0, d: lose(f.b, 1) }; }
+    f.res = my === 1 ? rb : ra;
   }
   function roundEnd() {
     const dead = G.players.filter(p => p.alive && p.hp <= 0).sort((a, b) => a.hp - b.hp);
-    dead.forEach(p => { p.alive = false; p.place = 8 - G.out; G.out++; owned(p).forEach(x => G.pool[x.n] += Math.pow(3, x.star - 1)); p.board = []; p.bench = Array(9).fill(null); });
+    dead.forEach(p => { p.alive = false; p.place = G.n - G.out; G.out++; owned(p).forEach(x => G.pool[x.n] += Math.pow(3, x.star - 1)); p.board = []; p.bench = Array(9).fill(null); });
     const alive = G.players.filter(p => p.alive);
     if (!G.me.alive) { G.phase = "over"; return; }
     if (alive.length === 1) { G.me.place = 1; G.phase = "over"; return; }
+    if (G.mp && !alive.some(p => !p.bot && p !== G.me) && !G.players.some(p => p.bot)) { G.me.place = 1; G.phase = "over"; return; }
     G.ri++; roundStart();
   }
   // joue le reste de la manche sans affichage (les combats des bots)
@@ -535,6 +563,74 @@
   }
   function sfVol(v) { SF.vol = v; try { localStorage.setItem("wc-arena-sfx", v); } catch (_) {} }
 
+  /* ---------- multijoueur : le salon synchronise les plateaux, chaque appareil rejoue les mêmes combats ---------- */
+  const MP = { snap: null, room: null, st: null, poll: null, host: false, gid: null, sent: -1, tick: 0 };
+  const rpc = async (fn, args) => { const r = await API.rpc(fn, args); if (r.error) throw new Error(r.error.message || "Erreur"); return r.data; };
+  const packBoard = p => p.board.map(x => ({ n: x.n, s: x.star, r: x.r, c: x.c, it: x.it || [] }));
+  const unpack = b => (b || []).filter(x => UN[x.n]).map(x => ({ n: x.n, star: x.s || 1, r: x.r, c: x.c, it: (x.it || []).filter(id => ITEM[id]) }));
+  function mpStop() { clearInterval(MP.poll); MP.poll = null; }
+  async function mpLeave() { mpStop(); const id = MP.room; MP.room = null; MP.st = null; MP.gid = null; if (id) try { await rpc("room_leave", { p_room: id }); } catch (_) {} }
+  async function mpLobby() {
+    mpStop(); let L = []; try { L = (await rpc("room_list") || []).filter(r => r.game === "arena"); } catch (e) { note(e.message); }
+    const mine = L.find(r => r.mine); if (mine) { MP.room = mine.id; return mpRoom(); }
+    const fr = (API.friends ? API.friends() : []).sort((a, b) => (b.on - a.on) || a.name.localeCompare(b.name));
+    root.innerHTML = `<div class="ar-menu"><h1>⚔️ Multijoueur</h1><p class="ar-adm">🔒 Pour l'instant, seuls les admins peuvent ouvrir Wiki Arena.</p>
+      ${L.length ? `<div class="ar-box"><h3>Salons ouverts</h3>${L.map(r => `<div class="ar-lrow"><b>${esc(API.name(r.host))}</b><span>${r.invited ? "t'invite · " : ""}${r.players.length} joueur${r.players.length > 1 ? "s" : ""}${r.status === "jeu" ? " · partie en cours" : ""}</span><button class="ar-b go" data-join="${r.id}" ${r.status === "jeu" ? "disabled" : ""}>Rejoindre</button></div>`).join("")}</div>` : ""}
+      <div class="ar-box"><h3>Créer un salon</h3><p>Invite jusqu'à 7 amis. Les places libres sont tenues par des bots.</p>
+        <div class="ar-fr">${fr.map(f => `<label><input type="checkbox" value="${f.id}"> ${esc(f.name)}${f.on ? " <i>●</i>" : ""}</label>`).join("") || `<span class="ar-hint">Aucun ami à inviter.</span>`}</div>
+        <button class="ar-b go" data-act="mpcreate">Créer le salon</button></div>
+      <div class="ar-row"><button class="ar-b" data-act="mprefresh">Actualiser</button><button class="ar-b" data-act="back">Retour</button></div></div>`;
+    root.onclick = async e => { const j = e.target.closest("[data-join]"), a = e.target.closest("[data-act]");
+      try { if (j) { await rpc("room_join", { p_room: +j.dataset.join }); MP.room = +j.dataset.join; return mpRoom(); }
+        if (!a) return; if (a.dataset.act === "back") return menu(); if (a.dataset.act === "mprefresh") return mpLobby();
+        if (a.dataset.act === "mpcreate") { const inv = [...root.querySelectorAll(".ar-fr input:checked")].map(i => i.value).slice(0, 7); MP.room = await rpc("room_create", { p_game: "arena", p_invite: inv, p_settings: {} }); return mpRoom(); }
+      } catch (err) { note(err.message); } };
+  }
+  const evOpts = sel => `<option value="">Aucun</option><option value="hasard" ${sel === "hasard" ? "selected" : ""}>🎲 Au hasard</option>` + Object.keys(EVENTS).map(k => `<option value="${k}" ${sel === k ? "selected" : ""}>${EVENTS[k][0]} ${EVENTS[k][1]}</option>`).join("");
+  const pickEvent = v => v === "hasard" ? Object.keys(EVENTS)[Math.floor(Math.random() * Object.keys(EVENTS).length)] : EVENTS[v] ? v : null;
+  function mpRoom() { MP.sig = null; MP.gid = null; root.innerHTML = `<div class="ar-menu"><h1>⚔️ Salon</h1><div id="ar-room"><p>Connexion…</p></div></div>`;
+    root.onclick = async e => { const a = e.target.closest("[data-act]"); if (!a) return;
+      try { if (a.dataset.act === "mpquit") { await mpLeave(); return menu(); }
+        if (a.dataset.act === "mpstart") { const v = k => (root.querySelector("#ar-" + k) || {}).value; await rpc("ar_start", { p_room: MP.room, p_cfg: { seed: Math.floor(Math.random() * 2e9), diff: v("mpdiff") || "normal", event: pickEvent(v("mpev")), bots: v("mpbots") !== "non" } }); mpTick(); }
+      } catch (err) { note(err.message); } };
+    mpStop(); MP.poll = setInterval(mpTick, 1500); mpTick(); }
+  async function mpTick() {
+    if (!root || !MP.room) return mpStop(); let d; try { d = await rpc("room_state", { p_room: MP.room, p_after: 0 }); } catch (e) { mpStop(); MP.room = null; note(e.message); if (!G) menu(); return; }
+    if (!root || !MP.room) return; MP.st = d; MP.host = d.host === API.uid; const s = d.state || {};
+    if (d.status === "jeu" && s.gid && s.gid !== MP.gid) { if ((s.order || []).includes(API.uid) && s.r === 0 && !s.prev) return mpBegin(s); if (!G) { const b = root.querySelector("#ar-room"); if (b) b.innerHTML = `<p>Une partie est en cours dans ce salon. Attends qu'elle se termine.</p><div class="ar-row"><button class="ar-b" data-act="mpquit">Quitter le salon</button></div>`; } return; }
+    if (G && G.mp && MP.gid && s.gid === MP.gid && G.phase === "over") { if (d.status === "jeu" && s.r !== MP.sent) { MP.sent = s.r; rpc("ar_submit", { p_room: MP.room, p_r: s.r, p_data: { dead: 1 } }).catch(() => {}); } return; }
+    if (G && G.mp && MP.gid && s.gid === MP.gid) return mpSync(s);
+    if (d.status !== "jeu") { if (G && G.mp && G.phase !== "over") { note("La partie a été arrêtée."); stopLoop(); clearInterval(UI.timer); G = null; mpRoom(); return; } if (G) return;
+      const sig = JSON.stringify([d.players, d.host]); if (sig === MP.sig) return; MP.sig = sig; const b = root.querySelector("#ar-room"); if (!b) return;
+      b.innerHTML = `<div class="ar-box"><h3>Joueurs (${d.players.length}/8)</h3>${d.players.map(p => `<div class="ar-lrow"><b>${esc(API.name(p.u))}${p.u === d.host ? " 👑" : ""}</b><span>${p.on ? "connecté" : "absent"}</span></div>`).join("")}</div>
+        ${MP.host ? `<div class="ar-box"><h3>Réglages</h3><label class="ar-opt">Bots sur les places libres <select id="ar-mpbots"><option value="oui">Oui</option><option value="non">Non</option></select></label><label class="ar-opt">Difficulté des bots <select id="ar-mpdiff"><option value="facile">Facile</option><option value="normal" selected>Normal</option><option value="difficile">Difficile</option></select></label><label class="ar-opt">Événement <select id="ar-mpev">${evOpts("hasard")}</select></label></div>
+        <div class="ar-row"><button class="ar-b big go" data-act="mpstart">Lancer la partie</button><button class="ar-b" data-act="mpquit">Fermer le salon</button></div>` : `<p>En attente de l'hôte…</p><div class="ar-row"><button class="ar-b" data-act="mpquit">Quitter le salon</button></div>`}`; }
+  }
+  function mpBegin(s) {
+    MP.gid = s.gid; MP.sent = -1; const c = s.cfg || {}, order = s.order || [], me = order.indexOf(API.uid);
+    music("main"); newGame(c.diff || "normal", (c.seed | 0) || 1, { event: c.event, humans: order.map(u => ({ uid: u, name: u === API.uid ? "Toi" : API.name(u) })), me, bots: c.bots !== false });
+    UI.speed = 1; build(); if (G.event) evBanner();
+  }
+  // « Prêt » : j'envoie mon plateau (l'hôte envoie aussi ceux des bots et les PV de tout le monde)
+  async function mpReady() {
+    if (!G || G.phase !== "plan") return; clearInterval(UI.timer); dragEnd(); fillBoard(G.me); G.phase = "wait"; UI.sel = null; UI.info = null; UI.selItem = null; drawAll(); $("#ar-timer").textContent = "en attente des autres…";
+    MP.snap = G.me.board.map(x => ({ n: x.n, star: x.star, r: x.r, c: x.c, ref: x, it: (x.it || []).slice() }));
+    const d = G.me.alive ? { b: packBoard(G.me), lvl: G.me.lvl } : { dead: 1 };
+    if (MP.host) { d.bots = {}; G.players.forEach(p => { if (p.bot && p.alive) d.bots[p.id] = { b: packBoard(p), lvl: p.lvl }; }); d.hp = G.players.map(p => p.hp); }
+    MP.sent = G.ri; try { await rpc("ar_submit", { p_room: MP.room, p_r: G.ri, p_data: d }); } catch (e) { note(e.message); MP.sent = -1; G.phase = "plan"; drawAll(); }
+  }
+  function mpSync(s) {
+    if (!G || G.phase === "over") return;
+    if (G.phase === "wait") { const n = Object.keys(s.by || {}).length, tot = (MP.st.players || []).length; if (s.r === G.ri) { $("#ar-timer").textContent = `en attente… ${n}/${tot} prêts`; if (++MP.tick % 6 === 0) rpc("ar_force", { p_room: MP.room, p_r: G.ri }).catch(() => {}); }
+      if (s.prev && s.prev.r === G.ri) { MP.tick = 0; mpGo(s.prev.by || {}); } }
+  }
+  function mpGo(by) {
+    let hostD = null; G.players.forEach(p => { if (p.bot || !p.uid) return; const d = by[p.uid]; if (d && MP.st && p.uid === MP.st.host) hostD = d; if (p === G.me || !d || d.afk || d.dead) return; p.board = unpack(d.b); p.lvl = d.lvl || p.lvl; });
+    if (hostD && !MP.host) { G.players.forEach(p => { if (p.bot && hostD.bots && hostD.bots[p.id]) { p.board = unpack(hostD.bots[p.id].b); p.lvl = hostD.bots[p.id].lvl || p.lvl; } }); if (Array.isArray(hostD.hp)) hostD.hp.forEach((h, i) => { const p = G.players[i]; if (p && p.alive && typeof h === "number" && h > 0) p.hp = h; }); }
+    G.phase = "plan"; startFight();
+  }
+  function evBanner() { const e = EVENTS[G.event], m = document.createElement("div"); m.className = "ar-modal"; m.innerHTML = `<div class="ar-sheet ar-over"><div style="font-size:60px">${e[0]}</div><h2>Événement : ${e[1]}</h2><p>${e[2]}</p><button class="ar-b go" data-x>C'est parti</button></div>`; root.appendChild(m); m.onclick = ev => { if (ev.target === m || ev.target.closest("[data-x]")) m.remove(); }; setTimeout(() => m.remove(), 6000); }
+
   /* ---------- interface ---------- */
   let API = null, root = null, UI = { sel: null, speed: 1, timer: null, tleft: 0, sim: null, loop: null, info: null };
   const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[m]));
@@ -552,16 +648,19 @@
     root = document.createElement("div"); root.id = "arena"; document.body.appendChild(root); document.body.classList.add("ar-open");
     menu();
   }
-  function close() { dragEnd(); muStop(); clearTimeout(UI.cine); stopLoop(); clearInterval(UI.timer); if (root) root.remove(); root = null; document.body.classList.remove("ar-open"); G = null; }
+  function close() { if (MP.room && G && G.mp) mpLeave(); else mpStop(); dragEnd(); muStop(); clearTimeout(UI.cine); stopLoop(); clearInterval(UI.timer); if (root) root.remove(); root = null; document.body.classList.remove("ar-open"); G = null; }
   function menu() {
     root.innerHTML = `<div class="ar-menu"><h1>⚔️ Wiki Arena</h1><p class="ar-adm">🔒 En construction : visible seulement par les admins</p>
       <p>Recrute des cartes dans la boutique, place-les sur ton plateau et regarde-les se battre. Trois cartes identiques fusionnent en ★★, puis en ★★★. Réunis des cartes du même univers ou de la même classe pour activer des synergies. Dernier joueur en vie : victoire !</p>
-      <p><b>Étapes 1 et 2 :</b> solo contre 7 bots, set 1 (58 unités), 44 objets et 13 boss. Le multijoueur, les événements et le duo arrivent ensuite.</p>
-      <div class="ar-diff"><span>Difficulté des bots :</span>${[["facile", "Facile"], ["normal", "Normal"], ["difficile", "Difficile"]].map(([k, l]) => `<button class="ar-b ${k === "normal" ? "on" : ""}" data-diff="${k}">${l}</button>`).join("")}</div>
-      <div class="ar-row"><button class="ar-b big go" data-act="start">Lancer la partie</button><button class="ar-b" data-act="help">Règles</button><button class="ar-b" data-act="quit">Quitter</button></div></div>`;
+      <div class="ar-box"><h3>Solo contre 7 bots</h3>
+        <div class="ar-diff"><span>Difficulté :</span>${[["facile", "Facile"], ["normal", "Normal"], ["difficile", "Difficile"]].map(([k, l]) => `<button class="ar-b ${k === "normal" ? "on" : ""}" data-diff="${k}">${l}</button>`).join("")}</div>
+        <label class="ar-opt">Événement <select id="ar-ev">${evOpts("")}</select></label>
+        <button class="ar-b big go" data-act="start">Jouer en solo</button></div>
+      <div class="ar-box"><h3>Multijoueur</h3><p>Jusqu'à 8 joueurs ; les places libres peuvent être tenues par des bots.</p><button class="ar-b big" data-act="multi">Jouer avec des amis</button></div>
+      <div class="ar-row"><button class="ar-b" data-act="help">Règles</button><button class="ar-b" data-act="quit">Quitter</button></div></div>`;
     root.onclick = e => { const d = e.target.closest("[data-diff]"); if (d) { root.querySelectorAll("[data-diff]").forEach(b => b.classList.toggle("on", b === d)); return; }
-      const a = e.target.closest("[data-act]"); if (!a) return; if (a.dataset.act === "quit") return close(); if (a.dataset.act === "help") return help();
-      if (a.dataset.act === "start") { music("main"); newGame((root.querySelector("[data-diff].on") || {}).dataset.diff || "normal"); build(); } };
+      const a = e.target.closest("[data-act]"); if (!a) return; if (a.dataset.act === "quit") return close(); if (a.dataset.act === "help") return help(); if (a.dataset.act === "multi") return mpLobby();
+      if (a.dataset.act === "start") { music("main"); newGame((root.querySelector("[data-diff].on") || {}).dataset.diff || "normal", 0, { event: pickEvent(root.querySelector("#ar-ev").value) }); build(); if (G.event) evBanner(); } };
   }
   function help() {
     const m = document.createElement("div"); m.className = "ar-modal"; m.innerHTML = `<div class="ar-sheet"><h2>Règles</h2>
@@ -594,7 +693,7 @@
   function drawAll() { drawTop(); drawTraits(); drawBoard(); drawBench(); drawItems(); drawShop(); drawPlayers(); drawInfo(); }
   function drawTop() { const i = G.info, base = i.st === 1 ? 0 : 3 + (i.st - 2) * 7, n = i.st === 1 ? 3 : 7; let h = `<b class="ar-stg">${i.st}-${i.k}</b>`;
     for (let k = 0; k < n; k++) { const ri = base + k, inf = roundInfo(ri), d = G.hist[ri]; h += `<i class="ar-ri ${d === 1 ? "w" : d === 0 ? "l" : ""} ${ri === G.ri ? "cur" : ""}">${inf.boss ? "💀" : inf.pve >= 0 ? "🐾" : "⚔️"}</i>`; }
-    $("#ar-round").innerHTML = h; $("#ar-me").innerHTML = `<span class="ar-av">${G.me.av}</span><span>❤️ <b>${Math.max(0, G.me.hp)}</b></span>`; }
+    $("#ar-round").innerHTML = h; $("#ar-me").innerHTML = `<span class="ar-av">${G.me.av}</span><span>❤️ <b>${Math.max(0, G.me.hp)}</b></span>${G.event ? `<button class="ar-evc" data-act="event">${EVENTS[G.event][0]} ${EVENTS[G.event][1]}</button>` : ""}`; }
   function drawTraits() {
     const cnt = traitsOf(G.me.board), keys = Object.keys(cnt).sort((a, b) => (tier(b, cnt[b]) - tier(a, cnt[a])) || cnt[b] - cnt[a]);
     $("#ar-traits").innerHTML = keys.map(k => { const ti = tier(k, cnt[k]), T = TR[k];
@@ -637,18 +736,18 @@
   function drawShop() {
     const p = G.me, off = G.phase === "over", it = Math.min(5, Math.floor(p.gold / 10));
     $("#ar-eco").innerHTML = `<div class="ar-lv"><b>Niveau ${p.lvl}</b><small>${p.lvl < 9 ? `${p.xp}/${XPN[p.lvl - 1]} XP` : "max"}</small><em><u style="width:${p.lvl < 9 ? p.xp / XPN[p.lvl - 1] * 100 : 100}%"></u></em></div>
-      <button class="ar-big xp" data-act="xp" ${off || p.gold < 4 || p.lvl >= 9 ? "disabled" : ""}><span class="ar-bi">⬆️</span><span>Acheter XP</span><b>4 🪙</b></button>
-      <button class="ar-big roll" data-act="roll" ${off || p.gold < 2 ? "disabled" : ""}><span class="ar-bi">🔄</span><span>Relancer</span><b>2 🪙</b></button>`;
+      <button class="ar-big xp" data-act="xp" ${off || p.gold < xpCost() || p.lvl >= 9 ? "disabled" : ""}><span class="ar-bi">⬆️</span><span>Acheter XP</span><b>${xpCost()} 🪙</b></button>
+      <button class="ar-big roll" data-act="roll" ${off || p.gold < rollCost() ? "disabled" : ""}><span class="ar-bi">🔄</span><span>Relancer</span><b>${rollCost()} 🪙</b></button>`;
     $("#ar-side").innerHTML = `<div class="ar-gold">🪙 <b>${p.gold}</b><small>${it ? `+${it} d'intérêts` : "10 or = +1 / manche"}</small></div>
       <button class="ar-big lock ${p.lock ? "on" : ""}" data-act="lock" ${off ? "disabled" : ""}><span class="ar-bi">${p.lock ? "🔒" : "🔓"}</span><span>${p.lock ? "Boutique gardée" : "Garder la boutique"}</span></button>
-      <button class="ar-big go" data-act="ready" ${G.phase !== "plan" ? "disabled" : ""}><span class="ar-bi">⚔️</span><span>Combat</span></button>`;
+      <button class="ar-big go" data-act="ready" ${G.phase !== "plan" ? "disabled" : ""}><span class="ar-bi">⚔️</span><span>${G.mp ? (G.phase === "wait" ? "En attente…" : "Prêt") : "Combat"}</span></button>`;
     $("#ar-shop").innerHTML = p.shop.map((n, i) => { if (!n) return `<div class="ar-card empty"></div>`; const d = UN[n], a = artOf(n), have = owned(p).filter(x => x.n === n && x.star === 1).length;
       return `<button class="ar-card c${d.c} ${have >= 2 ? "up" : have ? "pair" : ""}" data-buy="${i}" ${off || p.gold < d.c ? "disabled" : ""} style="${bg(n)}"><span class="ar-cost">${d.c} 🪙</span><span class="ar-tags">${[...d.o, d.cl].map(k => `<i>${TICO(k)} ${TNAME(k)}</i>`).join("")}</span><span class="ar-nm">${esc(a.nm)}</span><span class="ar-i" data-info="${esc(n)}">i</span>${have >= 2 ? `<span class="ar-up">★★ !</span>` : ""}</button>`; }).join("");
   }
   function drawPlayers() { $("#ar-players").innerHTML = G.players.slice().sort((a, b) => b.alive - a.alive || b.hp - a.hp).map(p => { const L = p.board.slice().sort((a, b) => UN[b.n].c * b.star - UN[a.n].c * a.star).slice(0, 9);
     const f = G.phase === "fight" && G.fights && G.fights.find(x => x.a === p || x.b === p), vs = f ? (f.a === p ? (f.b ? f.b.name : f.ghost ? "fantôme" : G.info.boss ? "boss" : "monstres") : f.a.name) : "";
-    return `<div class="ar-pl ${p.alive ? "" : "dead"} ${p === G.me ? "me" : ""} ${f ? "can" : ""} ${f && !f.done ? "infight" : ""} ${f && f === UI.view ? "view" : ""}" ${f ? `data-pl="${p.id}"` : ""}><div class="ar-plh"><span class="ar-av">${p.av}</span><b>${esc(p.name)}</b><span>${p.alive ? "❤️ " + Math.max(0, p.hp) : "💀 " + p.place + "e"}</span></div>${p.alive ? `<div class="ar-pls"><small>Niv. ${p.lvl}${Math.abs(p.streak) >= 2 ? (p.streak > 0 ? " · 🔥 " + p.streak : " · 🧊 " + -p.streak) : ""}${f ? ` · <span class="ar-plv ${f.done ? "done" : ""}">${f.done ? "✔️ fini" : "⚔️ en combat"} · ${esc(vs)}${f === UI.view ? " 👁" : ""}</span>` : ""}</small><span class="ar-plm">${L.map(x => `<i class="c${UN[x.n].c} s${x.star}" style="${bg(x.n)}"></i>`).join("")}</span></div>` : ""}<i class="ar-plb" style="width:${Math.max(0, p.hp)}%"></i></div>`; }).join(""); }
-  function drawDmg() { const S = UI.sim, box = root && $("#ar-dmg"); if (!S || !box) return; const L = S.units.filter(u => u.side === 0 && !u.sum && !u.mon).sort((a, b) => b.dealt - a.dealt), mx = Math.max(1, ...L.map(u => u.dealt));
+    return `<div class="ar-pl ${p.alive ? "" : "dead"} ${p === G.me ? "me" : ""} ${f ? "can" : ""} ${f && !f.done ? "infight" : ""} ${f && f === UI.view ? "view" : ""}" ${f ? `data-pl="${p.id}"` : ""}><div class="ar-plh"><span class="ar-av">${p.av}</span><b>${esc(p.name)}</b><span>${p.alive ? "❤️ " + Math.max(0, p.hp) : "💀 " + p.place + "e"}</span></div>${p.alive ? `<div class="ar-pls"><small>Niv. ${p.lvl}${Math.abs(p.streak) >= 2 ? (p.streak > 0 ? " · 🔥 " + p.streak : " · 🧊 " + -p.streak) : ""}${f ? ` · <span class="ar-plv ${f.done ? "done" : ""}">${f.done ? "✔️ fini" : "⚔️ en combat"} · ${esc(vs)}${f === UI.view ? " 👁" : ""}</span>` : ""}</small><span class="ar-plm">${(EVT === "brouillard" && p !== G.me ? [] : L).map(x => `<i class="c${UN[x.n].c} s${x.star}" style="${bg(x.n)}"></i>`).join("")}</span></div>` : ""}<i class="ar-plb" style="width:${Math.max(0, p.hp)}%"></i></div>`; }).join(""); }
+  function drawDmg() { const S = UI.sim, box = root && $("#ar-dmg"); if (!S || !box) return; const L = S.units.filter(u => u.side === (UI.flip ? 1 : 0) && !u.sum && !u.mon).sort((a, b) => b.dealt - a.dealt), mx = Math.max(1, ...L.map(u => u.dealt));
     box.innerHTML = L.map(u => `<div class="ar-dr"><i class="ar-dp c${u.cost}" style="${bg(u.n)}"></i><div><span>${esc(artOf(u.n).nm)}</span><b>${Math.round(u.dealt)}</b><em><u style="width:${u.dealt / mx * 100}%"></u></em></div></div>`).join(""); }
   function statLine(n, star) { const d = UN[n], b = CB[d.cl], st = STAR[star - 1]; return `PV <b>${Math.round(HPB[d.c - 1] * b.hp * st)}</b> · Dégâts <b>${Math.round(ADB[d.c - 1] * b.ad * st)}</b> · Vitesse <b>${b.as}</b> · Portée <b>${b.rg === 1 ? "mêlée" : b.rg + " cases"}</b> · Armure <b>${b.ar}</b> · Mana <b>${d.s.m || b.m}</b>`; }
   function drawInfo() {
@@ -705,14 +804,14 @@
     if (c) dropOn(x, { cell: c.dataset.cell.split(",").map(Number) }); else if (b) dropOn(x, { bench: +b.dataset.bench }); else if (el && el.closest("#ar-shopbar")) dropOn(x, { sell: 1 }); else { UI.sel = null; UI.info = null; drawAll(); }
   }
   function dragEnd() { document.removeEventListener("pointermove", dragMove); document.removeEventListener("pointerup", dragUp); document.removeEventListener("pointercancel", dragEnd); if (DG.g) DG.g.remove(); if (DG.over) DG.over.classList.remove("over"); DG.g = DG.over = DG.x = DG.item = null; DG.on = false; if (root) root.classList.remove("dragging", "dragitem"); }
-  function note(t) { if (API && API.toast) API.toast(t); }
+  function note(t) { if (!root) return; const o = root.querySelector(".ar-toast"); if (o) o.remove(); const d = document.createElement("div"); d.className = "ar-toast"; d.textContent = t; root.appendChild(d); setTimeout(() => d.remove(), 3200); }
   function onClick(e) {
     const t = e.target; if (UI.noClick && Date.now() - UI.noClick < 200) return;
     const inf = t.closest("[data-info]"); if (inf) { e.stopPropagation(); UI.info = { n: inf.dataset.info, star: 1 }; return drawInfo(); }
     const act = t.closest("[data-act]"); if (act && !act.disabled) return doAct(act.dataset.act);
     const tr = t.closest("[data-trait]"); if (tr) return traitPop(tr.dataset.trait);
     const itb = t.closest("[data-item]"); if (itb && G && G.phase !== "over") { const k = itb.dataset.item === "magnet" ? "magnet" : +itb.dataset.item; UI.sel = null; UI.selItem = UI.selItem === k ? null : k; UI.info = UI.selItem == null ? null : { item: k === "magnet" ? "magnet" : G.me.items[k] }; if (UI.selItem != null) sfx("pick"); return drawAll(); }
-    const pl = t.closest("[data-pl]"); if (pl && G && G.fights) { const q = G.players[+pl.dataset.pl], f = G.fights.find(x => x.a === q || x.b === q); if (f && f !== UI.view) { sfx("pick"); watch(f); } return; }
+    const pl = t.closest("[data-pl]"); if (pl && G && G.fights) { const q = G.players[+pl.dataset.pl], f = G.fights.find(x => x.a === q || x.b === q); if (f && f !== UI.view) { if (EVT === "brouillard" && f !== UI.fight) { sfx("err"); note("🌫️ Brouillard : impossible de regarder les autres combats."); return; } sfx("pick"); watch(f); } return; }
     if (!G || G.phase === "over") return;
     const b = t.closest("[data-buy]"); if (b && !b.disabled) { const r = buy(G.me, +b.dataset.buy); sfx(typeof r === "string" ? "err" : r ? "star" : "buy"); if (typeof r === "string") { if (r !== "vide") note(r); } else if (r) note(`✨ ${artOf(r[0].n).nm} passe ${stars(r[0].star)} !`); UI.sel = null; return drawAll(); }
     const fighting = G.phase !== "plan";
@@ -726,14 +825,15 @@
   }
   function doAct(a) {
     const p = G && G.me;
-    if (a === "quit") { if (!G || G.phase === "over" || confirm("Quitter la partie en cours ?")) close(); return; }
+    if (a === "quit") { if (!G || G.phase === "over" || confirm(G.mp ? "Quitter la partie ? Les autres continueront sans toi." : "Quitter la partie en cours ?")) close(); return; }
     if (a === "help") return help();
     if (a === "vol") { const v = $("#ar-vol"); if (v) v.hidden = !v.hidden; return; }
     if (a === "skip") return cineEnd();
     if (a === "myfight") { if (G && G.fights && UI.fight) watch(UI.fight); return; }
-    if (a === "again") { clearInterval(UI.timer); clearTimeout(UI.cine); stopLoop(); music(null); return menu(); }
+    if (a === "again") { clearInterval(UI.timer); clearTimeout(UI.cine); stopLoop(); music(null); if (G && G.mp) { G = null; if (MP.host) rpc("ar_end", { p_room: MP.room }).catch(() => {}); return mpRoom(); } return menu(); }
     if (a === "closeinfo") { UI.info = null; UI.sel = null; UI.selItem = null; return drawAll(); }
     if (a === "guide") return guide();
+    if (a === "event") return evBanner();
     if (a === "speed") { UI.speed = UI.speed === 1 ? 2 : UI.speed === 2 ? 4 : 1; $("#ar-speed").textContent = "×" + UI.speed; if (UI.loop) { stopLoop(); runLoop(); } return; }
     if (a === "ready") { if (G.phase === "plan") fight(); return; }
     if (a === "sell" && G.phase !== "plan" && UI.info && UI.info.own && p.board.includes(UI.info.own)) return;
@@ -749,12 +849,15 @@
   }
   function startTimer() { muPrep(G.info.boss ? "boss" + BOSS[G.info.boss].t : G.info.pve >= 0 ? null : "pvp"); clearInterval(UI.timer); UI.tleft = UI.ttot = G.ri < 3 ? 25 : 40; const tick = () => { if (!root || !G || G.phase !== "plan") return clearInterval(UI.timer); $("#ar-timer").textContent = "⏳ " + UI.tleft; $("#ar-tbar").style.width = UI.tleft / UI.ttot * 100 + "%"; if (UI.tleft <= 5 && UI.tleft > 0) sfx("tick"); if (UI.tleft-- <= 0) { clearInterval(UI.timer); fight(); } }; tick(); UI.timer = setInterval(tick, 1000); }
   /* ---------- combat affiché ---------- */
-  function fight() {
-    clearInterval(UI.timer); if (G.phase !== "plan") return; dragEnd(); sfx("go"); const p = G.me;
-    // plateau incomplet : on complète avec le banc
+  // plateau incomplet : on complète avec le banc
+  function fillBoard(p) {
     while (p.board.length < p.lvl && p.bench.some(Boolean)) { const i = p.bench.findIndex(x => x && !p.board.some(b => b.n === x.n)); const j = i >= 0 ? i : p.bench.findIndex(Boolean); const x = p.bench[j]; p.bench[j] = null; let r = 0, c = 3, k = 0; while (p.board.some(b => b.r === r && b.c === c)) { k++; c = [3, 2, 4, 1, 5, 0, 6][k % 7]; r = Math.floor(k / 7); } x.r = r; x.c = c; p.board.push(x); }
-    G.phase = "fight"; UI.sel = null; UI.info = null;
-    const f = prepareFights(); UI.fight = f; G.fights.forEach(x => { x.S = simInit(x.A, x.B, x.seed); x.done = false; });
+  }
+  function fight() { if (!G || G.phase !== "plan") return; if (G.mp) return mpReady(); startFight(); }
+  function startFight() {
+    clearInterval(UI.timer); if (G.phase !== "plan") return; dragEnd(); sfx("go"); if (G.me.alive) fillBoard(G.me);
+    G.phase = "fight"; UI.sel = null; UI.info = null; UI.selItem = null;
+    const f = prepareFights() || G.fights[0]; UI.fight = f; G.fights.forEach(x => { x.S = simInit(x.A, x.B, x.seed); x.done = false; });
     drawAll(); $("#ar-tbar").style.width = "0%"; watch(f);
     music(G.info.boss ? "boss" + BOSS[G.info.boss].t : f.b || f.ghost ? "pvp" : "main"); runLoop();
     if (G.info.boss) { const b = $("#ar-banner"); b.hidden = false; b.className = "ar-banner bossb"; b.innerHTML = `💀 ${esc(artOf(G.info.boss).nm)}<small>${esc(BOSS[G.info.boss].s.n)}</small>`; setTimeout(() => { if (root && b.classList.contains("bossb")) b.hidden = true; }, 1800); }
@@ -762,18 +865,20 @@
   const foeName = f => f.b ? f.b.name : f.ghost ? "le fantôme de " + f.ghost.name : G.info.boss ? artOf(G.info.boss).nm : "les monstres";
   // affiche le combat f (le sien ou celui d'un autre joueur)
   function watch(f) {
-    UI.view = f; UI.sim = f.S; UI.tok = {}; $("#ar-live").innerHTML = ""; $("#ar-cells").querySelectorAll(".ar-tok").forEach(x => x.remove());
+    UI.view = f; UI.sim = f.S; UI.flip = f.b === G.me; UI.tok = {}; $("#ar-live").innerHTML = ""; $("#ar-cells").querySelectorAll(".ar-tok").forEach(x => x.remove());
     f.S.units.forEach(u => { if (u.alive) addTok(u); });
-    $("#ar-timer").textContent = f === UI.fight ? "contre " + foeName(f) : `👁 ${f.a.name} contre ${foeName(f)}`;
+    $("#ar-timer").textContent = f === UI.fight ? "contre " + (f.b === G.me ? f.a.name : foeName(f)) : `👁 ${f.a.name} contre ${foeName(f)}`;
     let v = $("#ar-view"); if (f !== UI.fight) { if (!v) { v = document.createElement("div"); v.id = "ar-view"; v.className = "ar-view"; $("#ar-board").appendChild(v); }
       v.innerHTML = `<span>👁 ${esc(f.a.name)} (en bas) contre ${esc(foeName(f))} (en haut)</span><button class="ar-b" data-act="myfight">Revenir à mon combat</button>`; } else if (v) v.remove();
     drawPlayers(); drawDmg();
   }
-  function addTok(u) { const el = document.createElement("div"); el.className = `ar-u side${u.side} c${u.cost} ${u.mon ? "mon" : ""} ${u.boss ? "boss" : ""}`; el.dataset.uid = u.uid; el.style.cssText = hexPos(u.R, u.C);
+  // si je suis le camp du haut dans la simulation, on retourne l'affichage pour que mon équipe reste en bas
+  const VP = (R, C) => UI.flip ? hexPos(7 - R, 6 - C) : hexPos(R, C), VS = sd => UI.flip ? 1 - sd : sd;
+  function addTok(u) { const el = document.createElement("div"); el.className = `ar-u side${VS(u.side)} c${u.cost} ${u.mon ? "mon" : ""} ${u.boss ? "boss" : ""}`; el.dataset.uid = u.uid; el.style.cssText = VP(u.R, u.C);
     el.innerHTML = `<div class="ar-bars"><i class="hp"></i><i class="mp"></i></div>${tokenHTML(u.mon ? u.art : u.n, u.star, u.cost, "", u.items)}`; $("#ar-live").appendChild(el); UI.tok[u.uid] = el; }
   function runLoop() { UI.loop = setInterval(tickFight, 100 / UI.speed); }
   function stopLoop() { clearInterval(UI.loop); UI.loop = null; }
-  function fx(cls, R, C, txt, ms) { const el = document.createElement("div"); el.className = "ar-fx " + cls; el.style.cssText = hexPos(R, C); if (txt != null) el.textContent = txt; $("#ar-live").appendChild(el); setTimeout(() => el.remove(), ms || 700); return el; }
+  function fx(cls, R, C, txt, ms) { const el = document.createElement("div"); el.className = "ar-fx " + cls; el.style.cssText = VP(R, C); if (txt != null) el.textContent = txt; $("#ar-live").appendChild(el); setTimeout(() => el.remove(), ms || 700); return el; }
   function tickFight() {
     if (!root || !G || !G.fights) return stopLoop();
     for (const f of G.fights) { if (f.done) continue; const S = f.S; step(S); if (f === UI.view) showEvents(S); S.ev.length = 0;
@@ -783,7 +888,7 @@
           setTimeout(() => { if (root) $("#ar-banner").hidden = true; }, 2200); drawTop(); drawShop(); drawItems(); }
         drawPlayers(); } }
     const S = UI.sim; if (S) { if (Math.round(S.t * 10) % 5 === 0) drawDmg();
-      for (const u of S.units) { const el = UI.tok[u.uid]; if (!el || !u.alive) continue; el.style.left = ((u.C + (u.R & 1) * .5) / 7.5 * 100) + "%"; el.style.top = (u.R * .75 / 6.25 * 100) + "%";
+      for (const u of S.units) { const el = UI.tok[u.uid]; if (!el || !u.alive) continue; { const R = UI.flip ? 7 - u.R : u.R, C = UI.flip ? 6 - u.C : u.C; el.style.left = ((C + (R & 1) * .5) / 7.5 * 100) + "%"; el.style.top = (R * .75 / 6.25 * 100) + "%"; }
         el.querySelector(".hp").style.width = Math.max(0, u.hp / u.maxhp * 100) + "%"; el.querySelector(".mp").style.width = (u.maxMana ? u.mana / u.maxMana * 100 : 0) + "%";
         el.classList.toggle("stun", u.stunT > S.t); el.classList.toggle("shd", u.shield > 0); el.classList.toggle("ghosted", u.untargT > S.t); el.classList.toggle("big", !!u.big); } }
     if (G.fights.every(f => f.done)) { stopLoop(); drawDmg(); setTimeout(endRound, 1500 / Math.min(2, UI.speed)); }
@@ -799,13 +904,13 @@
       else if (e.k === "cast" && u) { fx("cast", u.R, u.C, e.n, 1100); if (el) { el.classList.add("casting"); setTimeout(() => el.classList.remove("casting"), 500); } }
       else if (e.k === "die" && el) { el.classList.add("dead"); }
       else if (e.k === "leap" && el) { el.classList.add("leap"); sfx("cast"); setTimeout(() => el.classList.remove("leap"), 480 / Math.min(2, UI.speed)); }
-      else if (e.k === "sudden") { fx("sudden", 3.5, 3, "⚡ Mort subite !", 1800); sfx("go"); }
-      else if (e.k === "zone") { const z = fx("zone side" + e.side, e.R, e.C, null, 500); z.style.setProperty("--zr", e.r); }
+      else if (e.k === "sudden") { fx("sudden", UI.flip ? 4 : 3.5, 3, "⚡ Mort subite !", 1800); sfx("go"); }
+      else if (e.k === "zone") { const z = fx("zone side" + VS(e.side), e.R, e.C, null, 500); z.style.setProperty("--zr", e.r); }
       else if (e.k === "flash") { const b = $("#ar-board"); b.classList.add("flash"); setTimeout(() => b.classList.remove("flash"), 350); }
       else if (e.k === "atk" || e.k === "shot") { const a = S.units[e.a], b = S.units[e.b], ea = UI.tok[e.a]; if (!a || !b) continue;
-        if (e.k === "atk" && ea) { ea.style.setProperty("--lx", ((b.C + (b.R & 1) * .5) - (a.C + (a.R & 1) * .5)) * 30 + "%"); ea.style.setProperty("--ly", (b.R - a.R) * 30 + "%"); ea.classList.remove("lunge"); void ea.offsetWidth; ea.classList.add("lunge"); }
-        else if (e.k === "shot") { const s = fx("shot side" + a.side, a.R, a.C, null, 260); requestAnimationFrame(() => { s.style.cssText = hexPos(b.R, b.C); }); } }
-      else if (e.k === "beam") { const a = S.units[e.a]; if (a) { const z = fx("beam side" + a.side, a.R, a.C, null, 450); z.style.setProperty("--ang", Math.atan2(e.dy * .75 * 1.1547, e.dx) + "rad"); } }
+        if (e.k === "atk" && ea) { { const k = UI.flip ? -30 : 30; ea.style.setProperty("--lx", ((b.C + (b.R & 1) * .5) - (a.C + (a.R & 1) * .5)) * k + "%"); ea.style.setProperty("--ly", (b.R - a.R) * k + "%"); } ea.classList.remove("lunge"); void ea.offsetWidth; ea.classList.add("lunge"); }
+        else if (e.k === "shot") { const s = fx("shot side" + VS(a.side), a.R, a.C, null, 260); requestAnimationFrame(() => { s.style.cssText = VP(b.R, b.C); }); } }
+      else if (e.k === "beam") { const a = S.units[e.a]; if (a) { const z = fx("beam side" + VS(a.side), a.R, a.C, null, 450); z.style.setProperty("--ang", Math.atan2(e.dy * .75 * 1.1547, e.dx) + (UI.flip ? Math.PI : 0) + "rad"); } }
     }
   }
   function endRound() {
@@ -816,7 +921,7 @@
   function over() {
     const pl = G.me.place; if (pl === 1) return cine();
     music(null); const m = document.createElement("div"); m.className = "ar-modal";
-    m.innerHTML = `<div class="ar-sheet ar-over"><h2>${pl <= 4 ? "Top " + pl : pl + "e place"}</h2><p>Tu termines ${pl}e sur 8, à la manche ${G.info.st}-${G.info.k}.</p>
+    m.innerHTML = `<div class="ar-sheet ar-over"><h2>${pl <= 4 ? "Top " + pl : pl + "e place"}</h2><p>Tu termines ${pl}e sur ${G.n}, à la manche ${G.info.st}-${G.info.k}.</p>
       <div class="ar-row"><button class="ar-b go" data-act="again">Rejouer</button><button class="ar-b" data-act="quit">Quitter</button></div></div>`;
     root.appendChild(m);
   }
@@ -848,5 +953,5 @@
       <div class="ar-ctab">${L.map(({ x, st }, i) => `<div class="ar-crow c${UN[x.n].c} ${i ? "" : "mvp"}"><div class="ar-cmini" style="${bg(x.n)}"></div><div class="ar-cn"><b>${esc(artOf(x.n).nm)}</b><small>${stars(x.star)}${i ? "" : " · MVP"}</small></div><span>⚔️ ${fmt(st.d)}</span><span>💀 ${st.k}</span><span>💚 ${fmt(st.h)}</span><span>🛡️ ${fmt(st.t)}</span></div>`).join("")}</div>
       <div class="ar-row"><button class="ar-b go" data-act="again">Rejouer</button><button class="ar-b" data-act="quit">Quitter</button></div></div>`;
   }
-  W.WikiArena = { open, close, _t: { UN, SET, TR, newGame, simRun, simInit, step, teamOf, buy, sell, merge, botTurn, prepareFights, resolveFight, resolveOthers, roundEnd, watch, roundInfo, pveTeam, TRK, BOSS, ITEM, FUS, COMP, equip, giveItems, cine, get G() { return G; } } };
+  W.WikiArena = { open, close, _t: { EVENTS, MP, mpGo, packBoard, UN, SET, TR, newGame, simRun, simInit, step, teamOf, buy, sell, merge, botTurn, prepareFights, resolveFight, resolveOthers, roundEnd, watch, roundInfo, pveTeam, TRK, BOSS, ITEM, FUS, COMP, equip, giveItems, cine, get G() { return G; } } };
 })();
