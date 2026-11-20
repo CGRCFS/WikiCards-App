@@ -693,7 +693,7 @@
     mpStop(); let L = []; try { L = (await rpc("room_list") || []).filter(r => r.game === "arena"); } catch (e) { note(e.message); }
     const mine = L.find(r => r.mine); if (mine) { MP.room = mine.id; return mpRoom(); }
     const fr = (API.friends ? API.friends() : []).sort((a, b) => (b.on - a.on) || a.name.localeCompare(b.name));
-    root.innerHTML = `<div class="ar-menu"><h1>⚔️ Multijoueur</h1><p class="ar-adm">🔒 Pour l'instant, seuls les admins peuvent ouvrir Wiki Arena.</p>
+    root.innerHTML = `<div class="ar-menu"><h1>⚔️ Multijoueur</h1>
       ${L.length ? `<div class="ar-box"><h3>Salons ouverts</h3>${L.map(r => `<div class="ar-lrow"><b>${esc(API.name(r.host))}</b><span>${r.invited ? "t'invite · " : ""}${r.players.length} joueur${r.players.length > 1 ? "s" : ""}${r.status === "jeu" ? " · partie en cours" : ""}</span><button class="ar-b go" data-join="${r.id}" ${r.status === "jeu" ? "disabled" : ""}>Rejoindre</button></div>`).join("")}</div>` : ""}
       <div class="ar-box"><h3>Créer un salon</h3><p>Invite jusqu'à 7 amis. Les places libres sont tenues par des bots.</p>
         <div class="ar-fr">${fr.map(f => `<label><input type="checkbox" value="${f.id}"> ${esc(f.name)}${f.on ? " <i>●</i>" : ""}</label>`).join("") || `<span class="ar-hint">Aucun ami à inviter.</span>`}</div>
@@ -780,7 +780,7 @@
   }
   function close() { if (MP.room && G && G.mp) mpLeave(); else mpStop(); dragEnd(); muStop(); clearTimeout(UI.cine); stopLoop(); clearInterval(UI.timer); if (root) root.remove(); root = null; document.body.classList.remove("ar-open"); G = null; }
   function menu() {
-    root.innerHTML = `<div class="ar-menu"><h1>⚔️ Wiki Arena</h1><p class="ar-adm">🔒 En construction : visible seulement par les admins</p>
+    root.innerHTML = `<div class="ar-menu"><h1>⚔️ Wiki Arena</h1>
       <p>Recrute des cartes dans la boutique, place-les sur ton plateau et regarde-les se battre. Trois cartes identiques fusionnent en ★★, puis en ★★★. Réunis des cartes du même univers ou de la même classe pour activer des synergies. Dernier joueur en vie : victoire !</p>
       ${(() => { const sv = loadSave(); if (!sv || sv.mp) return ""; const r = sv.G.ri, st = r < 3 ? 1 : 2 + Math.floor((r - 3) / 7), k = r < 3 ? r + 1 : (r - 3) % 7 + 1; return `<div class="ar-box ar-resume"><h3>Partie en cours</h3><p>${sv.G.duo ? "Duo" : "Solo"} · manche ${st}-${k} · ❤️ ${Math.max(0, sv.G.players[sv.G.mei].hp)}</p><button class="ar-b big go" data-act="resume">▶ Reprendre</button></div>`; })()}
       <div class="ar-box"><h3>Solo contre 7 bots</h3>
