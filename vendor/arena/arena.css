@@ -422,3 +422,8 @@ body.ar-open{overflow:hidden}
 
 .ar-tm{display:inline-block;font-style:normal;font-size:10px;font-weight:800;width:15px;height:15px;line-height:15px;text-align:center;border-radius:4px;margin-right:4px;color:#000;vertical-align:1px}
 .ar-tm.t0{background:#4c8dff}.ar-tm.t1{background:#f87171}.ar-tm.t2{background:#4ade80}.ar-tm.t3{background:#ffd24d}
+
+.ar-scout{width:min(560px,96vw)}
+.ar-sboard{position:relative;width:100%;aspect-ratio:7.5/3.7;margin:8px 0;container-type:inline-size}
+.ar-sboard .ar-cell{cursor:default}
+.ar-over .ar-ctab{max-height:44vh;overflow:auto}
