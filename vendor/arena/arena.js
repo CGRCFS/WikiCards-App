@@ -764,6 +764,7 @@
   const artOf = n => { const id = IDS[n] || IDS[(UN[n] || {}).n]; const a = (API && id && API.art(id)) || {}; const o = API && API.own && id ? API.own(id) : null; return { url: a.url || "", px: a.px == null ? 50 : a.px, py: a.py == null ? 25 : a.py, nm: a.nm || n, own: o ? (o.s ? "S" : o.r === "M" || o.r === "L" ? o.r : "") : "" }; };
   const bg = n => { const a = artOf(n); return a.url ? `background-image:url('${String(a.url).replace(/'/g, "%27")}');background-position:${a.px}% ${a.py}%` : ""; };
   const stars = s => "★".repeat(s);
+  const SMALL = () => typeof innerWidth !== "undefined" && innerWidth <= 900;
   const RECO = { col: [0], bag: [0, 1], ass: [3], tir: [3], mag: [3], sou: [2, 3], str: [2] };
   const PLACE = { col: "en première ligne : il encaisse pour les autres.", bag: "devant, en 1re ou 2e ligne.", ass: "à l'arrière : il saute tout seul sur la ligne arrière ennemie au début du combat.", tir: "tout au fond, derrière tes unités de mêlée.", mag: "au fond, bien à l'abri.", sou: "au milieu ou au fond, près de ses alliés.", str: "au milieu, entouré de ses alliés." };
   const POSI = { col: ["▲", "Devant", "f"], bag: ["▲", "Devant", "f"], ass: ["⤴", "Fond · bondit", "b"], tir: ["▼", "Fond", "b"], mag: ["▼", "Fond", "b"], sou: ["◆", "Milieu", "m"], str: ["◆", "Milieu", "m"] };
@@ -909,7 +910,7 @@
       <button class="ar-big lock ${p.lock ? "on" : ""}" data-act="lock" ${off ? "disabled" : ""}><span class="ar-bi">${p.lock ? "🔒" : "🔓"}</span><span>${p.lock ? "Boutique gardée" : "Garder la boutique"}</span></button>
       <button class="ar-big go" data-act="ready" ${G.phase !== "plan" ? "disabled" : ""}><span class="ar-bi">⚔️</span><span>${G.mp ? (G.phase === "wait" ? "En attente…" : "Prêt") : "Combat"}</span></button>`;
     $("#ar-shop").innerHTML = p.shop.map((n, i) => { if (!n) return `<div class="ar-card empty"></div>`; const d = UN[n], a = artOf(n), have = owned(p).filter(x => x.n === n && x.star === 1).length;
-      return `<button class="ar-card c${d.c} ${have >= 2 ? "up" : have ? "pair" : ""}" data-buy="${i}" ${off || p.gold < d.c ? "disabled" : ""} style="${bg(n)}"><span class="ar-cost">${d.c} 🪙</span><span class="ar-tags">${[...d.o, d.cl].map(k => `<i>${TICO(k)} ${TNAME(k)}</i>`).join("")}</span><span class="ar-nm">${esc(a.nm)}</span><span class="ar-pos ${POSI[d.cl][2]}">${POSI[d.cl][0]} ${POSI[d.cl][1]}</span><span class="ar-i" data-info="${esc(n)}">i</span>${have >= 2 ? `<span class="ar-up">★★ !</span>` : ""}</button>`; }).join("");
+      return `<button class="ar-card c${d.c} ${have >= 2 ? "up" : have ? "pair" : ""}" data-buy="${i}" ${off || p.gold < d.c ? "disabled" : ""} style="${bg(n)}"><span class="ar-cost">${d.c} 🪙</span><span class="ar-tags">${[...d.o, d.cl].map(k => `<i>${TICO(k)}<u> ${TNAME(k)}</u></i>`).join("")}</span><span class="ar-nm">${esc(a.nm)}</span><span class="ar-pos ${POSI[d.cl][2]}">${POSI[d.cl][0]} ${POSI[d.cl][1].split(" ·")[0]}</span><span class="ar-i" data-info="${esc(n)}">i</span>${have >= 2 ? `<span class="ar-up">★★ !</span>` : ""}</button>`; }).join("");
   }
   function drawPlayers() { $("#ar-players").innerHTML = G.players.slice().sort((a, b) => b.alive - a.alive || b.hp - a.hp || a.team - b.team || a.id - b.id).map(p => { const L = p.board.slice().sort((a, b) => UN[b.n].c * b.star - UN[a.n].c * a.star).slice(0, 9);
     const f = G.phase === "fight" && G.fights && G.fights.find(x => x.a === p || x.b === p), vs = f ? (f.a === p ? (f.b ? f.b.name : f.ghost ? "fantôme" : G.info.boss ? "boss" : "monstres") : f.a.name) : "";
@@ -918,12 +919,13 @@
     box.innerHTML = L.map(u => `<div class="ar-dr"><i class="ar-dp c${u.cost}" style="${bg(u.n)}"></i><div><span>${esc(artOf(u.n).nm)}</span><b>${Math.round(u.dealt)}</b><em><u style="width:${u.dealt / mx * 100}%"></u></em></div></div>`).join(""); }
   function statLine(n, star) { const d = UN[n], b = CB[d.cl], st = STAR[star - 1]; return `PV <b>${Math.round(HPB[d.c - 1] * b.hp * st)}</b> · Dégâts <b>${Math.round(ADB[d.c - 1] * b.ad * st)}</b> · Vitesse <b>${b.as}</b> · Portée <b>${b.rg === 1 ? "mêlée" : b.rg + " cases"}</b> · Armure <b>${b.ar}</b> · Mana <b>${d.s.m || b.m}</b>`; }
   function drawInfo() {
-    const box = $("#ar-info"), x = UI.info; box.classList.toggle("open", !!x);
+    const box = $("#ar-info"), x = UI.info; box.classList.toggle("open", !!x); box.classList.remove("mini");
     if (x && x.item != null) { box.innerHTML = itemHTML(x.item) + `<div class="ar-ibtn"><button class="ar-b mini" data-act="closeinfo">✕</button></div>`; return; }
     if (x && x.boss) { box.innerHTML = bossHTML(x.boss); return; }
     if (!x && G.info.boss && G.phase === "plan") { box.classList.add("open"); box.innerHTML = `<div class="ar-bossw">⚠️ Combat de boss</div>` + bossHTML(G.info.boss, true); return; }
     if (!x) { box.innerHTML = `<div class="ar-tip"><b>💡 Conseil</b><p>${TIPS[G.ri % TIPS.length]}</p><p class="ar-hint">Touche une unité ou le « i » d'une carte pour voir sa fiche. Glisse tes unités pour les placer.</p></div>`; return; }
     const d = UN[x.n], a = artOf(x.n);
+    if (x.own && !x.full && SMALL()) { box.classList.add("mini"); box.innerHTML = `<span class="ar-pos in ${POSI[d.cl][2]}">${POSI[d.cl][0]} ${POSI[d.cl][1]}</span><b class="ar-mn">${esc(a.nm)} <small>${stars(x.star || 1)}</small></b><span class="ar-mt">${[...d.o, d.cl].map(TICO).join("")}</span><button class="ar-b" data-act="fullinfo">Fiche</button>${G.phase === "plan" || !G.me.board.includes(x.own) ? `<button class="ar-b" data-act="sell">+${sellVal(x.own)}🪙</button>` : ""}<button class="ar-b mini" data-act="closeinfo">✕</button>`; return; }
     box.innerHTML = `<div class="ar-ipic c${d.c}" style="${bg(x.n)}"></div><div class="ar-itx"><h3>${esc(a.nm)} <small>${stars(x.star || 1)} · ${d.c}🪙</small></h3>
       <p class="ar-itr">${d.o.map(k => `${TICO(k)} ${TNAME(k)}`).join(" · ")} · ${TICO(d.cl)} ${TNAME(d.cl)}</p><p class="ar-ist">${statLine(x.n, x.star || 1)}</p>
       <p><b>${esc(d.s.n)} :</b> ${esc(d.s.t)}</p><p class="ar-ipl"><span class="ar-pos in ${POSI[d.cl][2]}">${POSI[d.cl][0]} ${POSI[d.cl][1]}</span> <b>Placement :</b> ${PLACE[d.cl]}</p>
@@ -1013,9 +1015,9 @@
   function dragMove(e) {
     if (DG.x == null && DG.item == null || e.pointerId !== DG.id) return;
     if (!DG.on) { if (Math.hypot(e.clientX - DG.sx, e.clientY - DG.sy) < 7) return; DG.on = true; sfx("pick"); const g = DG.g = document.createElement("div");
-      if (DG.x) { UI.selItem = null; UI.sel = DG.x; UI.info = { n: DG.x.n, star: DG.x.star, own: DG.x }; drawAll(); root.classList.add("dragging"); $("#ar-sellz").textContent = `🪙 Lâche ici pour vendre (+${sellVal(DG.x)} or)`;
+      if (DG.x) { UI.selItem = null; UI.sel = DG.x; UI.info = SMALL() ? null : { n: DG.x.n, star: DG.x.star, own: DG.x }; drawAll(); root.classList.add("dragging"); $("#ar-sellz").textContent = `🪙 Lâche ici pour vendre (+${sellVal(DG.x)} or)`;
         const src = root.querySelector(".ar-cell.sel .ar-tok, .ar-slot.sel .ar-tok"), w = src ? src.getBoundingClientRect().width : 64; g.className = "ar-ghost"; g.style.width = w + "px"; g.innerHTML = tokenHTML(DG.x.n, DG.x.star, UN[DG.x.n].c, "", DG.x.it); }
-      else { UI.sel = null; UI.selItem = DG.item; UI.info = { item: DG.item === "magnet" ? "magnet" : G.me.items[DG.item] }; drawAll(); root.classList.add("dragitem"); g.className = "ar-ghost item"; g.textContent = DG.item === "magnet" ? "🧲" : ITEM[G.me.items[DG.item]].ic; }
+      else { UI.sel = null; UI.selItem = DG.item; UI.info = SMALL() ? null : { item: DG.item === "magnet" ? "magnet" : G.me.items[DG.item] }; drawAll(); root.classList.add("dragitem"); g.className = "ar-ghost item"; g.textContent = DG.item === "magnet" ? "🧲" : ITEM[G.me.items[DG.item]].ic; }
       document.body.appendChild(g); }
     e.preventDefault(); DG.g.style.transform = `translate(${e.clientX}px,${e.clientY}px) translate(-50%,-60%) scale(1.15)`;
     const el = document.elementFromPoint(e.clientX, e.clientY), t = el && (el.closest("[data-cell]") || el.closest("[data-bench]") || DG.x && el.closest("#ar-shopbar") || DG.item != null && el.closest("[data-item]"));
@@ -1060,6 +1062,7 @@
     if (a === "again") { clearInterval(UI.timer); clearTimeout(UI.cine); stopLoop(); music(null); if (G && G.mp) { G = null; if (MP.host) rpc("ar_end", { p_room: MP.room }).catch(() => {}); return mpRoom(); } return menu(); }
     if (a === "closeinfo") { UI.info = null; UI.sel = null; UI.selItem = null; return drawAll(); }
     if (a === "guide") return guide();
+    if (a === "fullinfo") { if (UI.info) { UI.info.full = true; drawInfo(); } return; }
     if (a === "event") return evBanner();
     if (a === "augs") { const m = document.createElement("div"); m.className = "ar-modal"; m.innerHTML = `<div class="ar-sheet"><h2>Tes améliorations</h2>${G.me.aug.map(k => `<p>${AUG[k][0]} <b>${AUG[k][1]}</b> : ${AUG[k][2]}</p>`).join("")}<button class="ar-b" data-x>Fermer</button></div>`; root.appendChild(m); m.onclick = e => { if (e.target === m || e.target.closest("[data-x]")) m.remove(); }; return; }
     if (a === "tuto") { root.querySelectorAll(".ar-modal").forEach(m => m.remove()); if (G && G.phase === "plan") tuto(); else note("Le tutoriel se lance pendant la préparation d'une partie."); return; }
