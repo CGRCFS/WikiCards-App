@@ -232,6 +232,16 @@
     if (x.it.length >= 3) return null; x.it.push(id); return id;
   }
   function giveItems(p, nc, nf) { const got = []; for (let i = 0; i < nc; i++) got.push(CK[Math.floor(G.rng() * CK.length)]); const FK = Object.keys(ITEM).filter(k => !isComp(k)); for (let i = 0; i < nf; i++) got.push(FK[Math.floor(G.rng() * FK.length)]); p.items.push(...got); return got; }
+  // butin du joueur : un objet au choix parmi trois, le reste au hasard (les bots prennent tout au hasard)
+  function loot(p, nc, nf) {
+    if (p !== G.me || p.bot) return giveItems(p, nc, nf);
+    const pick3 = L => { L = L.slice(); for (let i = L.length - 1; i > 0; i--) { const j = Math.floor(G.rng() * (i + 1)), t = L[i]; L[i] = L[j]; L[j] = t; } return L.slice(0, 3); };
+    if (nf > 0) { p.choices.push({ t: "loot", opts: pick3(Object.keys(ITEM).filter(k => !isComp(k))) }); return giveItems(p, nc, nf - 1); }
+    if (nc > 0) { p.choices.push({ t: "loot", opts: pick3(CK) }); return giveItems(p, nc - 1, 0); }
+    return [];
+  }
+  // applique un choix en attente (i = option choisie)
+  function choose(p, i) { const c = p.choices.shift(); if (!c) return null; const id = c.opts[Math.max(0, Math.min(c.opts.length - 1, i || 0))]; if (c.t === "aug") takeAug(p, id); else p.items.push(id); return { t: c.t, id }; }
   function takeItems(p, x) { if (x.it && x.it.length) { p.items.push(...x.it); x.it = []; } }
   const ODDS = [[100, 0, 0, 0, 0], [100, 0, 0, 0, 0], [75, 25, 0, 0, 0], [55, 30, 15, 0, 0], [45, 33, 20, 2, 0], [30, 40, 25, 5, 0], [19, 30, 40, 10, 1], [17, 24, 32, 24, 3], [15, 18, 25, 30, 12]];
   const XPN = [2, 2, 6, 10, 20, 36, 56, 80], POOLN = [22, 20, 17, 10, 9], STAGEDMG = [0, 0, 2, 3, 5, 7, 10, 15, 20, 30];
@@ -251,14 +261,34 @@
     toutourien: ["🎰", "Tout ou rien", "Une victoire rapporte 3 or de plus, mais une défaite fait perdre deux fois plus de PV."],
   };
   let EVT = null;   // événement de la partie en cours
+  // améliorations : à trois moments de la partie, chacun en choisit une parmi trois
+  const AUG = {
+    muscu: ["💪", "Musculation", "Toute ton équipe inflige 12 % de dégâts en plus."],
+    blindage: ["🛡️", "Blindage", "Toute ton équipe gagne 20 d'armure et de résistance magique."],
+    cardio: ["🏃", "Cardio", "Toute ton équipe attaque 12 % plus vite."],
+    infirmerie: ["🏥", "Infirmerie", "Toute ton équipe récupère 1 % de ses PV max chaque seconde."],
+    vampire: ["🧛", "Vampirisme", "Toute ton équipe se soigne de 8 % des dégâts qu'elle inflige."],
+    mana: ["🔋", "Batteries pleines", "Toute ton équipe commence chaque combat avec 20 mana."],
+    tueur: ["🏹", "Chasseur de monstres", "+30 % de dégâts contre les monstres et les boss."],
+    chats2: ["🐈", "Neuf vies", "Tes Chats comptent double pour la synergie Chat."],
+    place: ["➕", "Place en plus", "Tu peux poser une unité de plus sur le plateau."],
+    rente: ["🏦", "Rente", "Tu gagnes 1 or de plus à chaque manche."],
+    tirelire: ["🐖", "Tirelire", "Tu reçois 10 or tout de suite."],
+    composants: ["🧰", "Boîte à outils", "Tu reçois 2 composants tout de suite."],
+    niveau: ["📚", "Révisions", "Tu reçois 8 XP tout de suite."],
+  };
+  const AUGR = [3, 11, 18];   // manches où l'on choisit une amélioration (2-1, 3-2, 4-2)
+  const cap = p => p.lvl + ((p.aug || []).includes("place") ? 1 : 0);
+  function takeAug(p, id) { p.aug = p.aug || []; if (!AUG[id] || p.aug.includes(id)) return; p.aug.push(id); if (id === "tirelire") p.gold += 10; else if (id === "composants") giveItems(p, 2, 0); else if (id === "niveau") addXp(p, 8); }
+  const augOpts = (p, R) => { const L = Object.keys(AUG).filter(k => !(p.aug || []).includes(k)); for (let i = L.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)), t = L[i]; L[i] = L[j]; L[j] = t; } return L.slice(0, 3); };
 
   /* ---------- outils ---------- */
-  const rng32 = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  const rng32 = a => { const f = () => { let x = f.a | 0; x = x + 0x6D2B79F5 | 0; f.a = x; let t = Math.imul(x ^ x >>> 15, 1 | x); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; f.a = a | 0; return f; };
   const NB = [[[0, -1], [0, 1], [-1, -1], [-1, 0], [1, -1], [1, 0]], [[0, -1], [0, 1], [-1, 0], [-1, 1], [1, 0], [1, 1]]];
   const ROWS = 8, COLS = 7;
   const hd = (r1, c1, r2, c2) => { const x1 = c1 - (r1 - (r1 & 1)) / 2, x2 = c2 - (r2 - (r2 & 1)) / 2, dx = x1 - x2, dz = r1 - r2; return Math.max(Math.abs(dx), Math.abs(dz), Math.abs(dx + dz)); };
   const dist = (a, b) => hd(a.R, a.C, b.R, b.C);
-  function traitsOf(list) { const seen = new Set(), n = {}; if (EVT === "chats" && list.length) n.chat = 1; list.forEach(x => { if (seen.has(x.n) || !UN[x.n]) return; seen.add(x.n); const d = UN[x.n]; [...d.o, d.cl].forEach(k => n[k] = (n[k] || 0) + 1); }); return n; }
+  function traitsOf(list, aug) { const seen = new Set(), n = {}; list.forEach(x => { if (seen.has(x.n) || !UN[x.n]) return; seen.add(x.n); const d = UN[x.n]; [...d.o, d.cl].forEach(k => n[k] = (n[k] || 0) + 1); }); if (aug && aug.includes("chats2") && n.chat) n.chat *= 2; if (EVT === "chats" && list.length) n.chat = (n.chat || 0) + 1; return n; }
   const tier = (k, n) => { let i = -1; TR[k].t.forEach((t, j) => { if (n >= t) i = j; }); return i; };
 
   /* ---------- simulation de combat ---------- */
@@ -280,7 +310,7 @@
   function simInit(A, B, seed) {
     const S = { units: [], t: 0, rng: rng32(seed), ev: [], delayed: [], grid: {}, gold: [0, 0], goldWin: [0, 0], over: false, win: -1, sdT: EVT === "subite" ? 12 : 30 };
     [A, B].forEach((T, side) => T.units.forEach(x => { const u = mkUnit(S, side, x); while (S.grid[u.R + "," + u.C]) { u.C = (u.C + 1) % COLS; } S.grid[u.R + "," + u.C] = u; S.units.push(u); }));
-    [A, B].forEach((T, side) => { const cnt = traitsOf(T.units), mine = S.units.filter(u => u.side === side), foes = S.units.filter(u => u.side !== side);
+    [A, B].forEach((T, side) => { const cnt = traitsOf(T.units, T.aug), mine = S.units.filter(u => u.side === side), foes = S.units.filter(u => u.side !== side);
       Object.keys(cnt).forEach(k => { const ti = tier(k, cnt[k]); if (ti < 0) return; const v = TR[k].v[ti], mem = mine.filter(u => u.o && (u.o.includes(k) || u.cl === k) && !u.mon);
         if (k === "catch") mem.forEach(u => { u.maxhp += v[0]; u.ad *= 1 + v[1] / 100; });
         else if (k === "pol") mine.forEach(u => u.shield += v[0]);
@@ -300,6 +330,9 @@
         else if (k === "sou") mine.forEach(u => u.red += v[0] / 100);
         else if (k === "str") mine.forEach(u => u.amp += v[0] / 100);
       }); });
+    [A, B].forEach((T, side) => { const AG = T.aug || []; if (!AG.length) return; S.units.forEach(u => { if (u.side !== side) return;
+      if (AG.includes("muscu")) u.amp += .12; if (AG.includes("blindage")) { u.armor += 20; u.mr += 20; } if (AG.includes("cardio")) u.as *= 1.12; if (AG.includes("infirmerie")) u.regen += .01;
+      if (AG.includes("vampire")) u.ls += .08; if (AG.includes("mana")) u.mana += 20; if (AG.includes("tueur")) u.vsMon = 1; }); });
     S.units.forEach(u => { const I = u.it; if (I.parapluie) u.shield += u.maxhp * .25; if (I.bulle) u.shield += 300; if (u.maxMana) u.mana = Math.min(u.maxMana - 1, u.mana);
       if (I.enceinte || I.soutif) S.units.forEach(a => { if (a !== u && a.side === u.side && dist(a, u) <= 1) { if (I.enceinte && a.maxMana) a.mana = Math.min(a.maxMana - 1, a.mana + 15); if (I.soutif) { a.armor += 20; a.mr += 20; } } }); });
     S.units.forEach(u => { u.hp = u.maxhp; if (u.spell && u.spell.pas === "revive") u.revive = true; if (u.spell && u.spell.pas === "goldwin") S.goldWin[u.side] += 2; });
@@ -321,7 +354,7 @@
   function heal(S, u, v, quiet, by) { if (!u.alive || v <= 0) return; if (S.t > S.sdT) v *= .4; if (u.ahT > S.t) v *= .5; const h = Math.min(v, u.maxhp - u.hp); u.hp += h; const hb = by || u; (hb.owner || hb).healed += h; if (!quiet && h > 1) S.ev.push({ k: "heal", u: u.uid, v: Math.round(h) }); }
   function dmg(S, src, t, amt, type, o) {
     o = o || {}; if (!t.alive || amt <= 0) return 0;
-    if (src) amt *= src.amp + bsum(S, src, "amp"); if (S.t > S.sdT) amt *= 1 + (S.t - S.sdT) * .12; if (src && bsum(S, src, "weak")) amt *= Math.max(.2, 1 - bsum(S, src, "weak"));
+    if (src) amt *= src.amp + bsum(S, src, "amp"); if (S.t > S.sdT) amt *= 1 + (S.t - S.sdT) * .12; if (src && src.vsMon && t.mon) amt *= 1.3; if (src && bsum(S, src, "weak")) amt *= Math.max(.2, 1 - bsum(S, src, "weak"));
     let res = Math.max(0, type === "p" ? t.armor + bsum(S, t, "armor") : type === "m" ? t.mr + bsum(S, t, "armor") : 0); if (type === "p" && src && src.pen) res *= 1 - src.pen;
     amt *= 100 / (100 + res); if (type === "m" && t.it.bouchons) amt *= .7; if (o.atk && t.it.couvercle) amt = Math.max(amt * .3, amt - 15); amt *= 1 - Math.min(.6, t.red); if (t.vulnT > S.t) amt *= 1 + t.vuln;
     let left = amt; if (t.shield > 0) { const a = Math.min(t.shield, left); t.shield -= a; left -= a; }
@@ -434,7 +467,7 @@
 
   /* ---------- partie ---------- */
   let G = null;
-  const newPlayer = (id, name, bot) => ({ id, name, bot, hp: 100, gold: 0, lvl: 1, xp: 0, board: [], bench: Array(9).fill(null), items: [], streak: 0, alive: true, shop: [], lock: false, place: 0 });
+  const newPlayer = (id, name, bot) => ({ id, name, bot, hp: 100, gold: 0, lvl: 1, xp: 0, board: [], bench: Array(9).fill(null), items: [], aug: [], choices: [], streak: 0, alive: true, shop: [], lock: false, place: 0 });
   // o : { event, humans: [{ uid, name }], me: index, bots: bool } pour le multijoueur
   function newGame(diff, seed, o) {
     o = o || {}; seed = seed || (Date.now() & 0x7fffffff); const rng = rng32(seed), names = BOTN.slice().sort(() => rng() - .5), AV = ["👑", "🦊", "🐸", "🐼", "🐙", "🦉", "🐷", "🐯", "🦄"];
@@ -482,21 +515,25 @@
   function buyXp(p) { if (p.gold < xpCost() || p.lvl >= 9) return false; p.gold -= xpCost(); addXp(p, 4); return true; }
   function addXp(p, v) { if (p.lvl >= 9) return; p.xp += v; while (p.lvl < 9 && p.xp >= XPN[p.lvl - 1]) { p.xp -= XPN[p.lvl - 1]; p.lvl++; } }
   function reroll(p) { if (p.gold < rollCost()) return false; p.gold -= rollCost(); rollShop(p); return true; }
-  const income = (p, ri) => { const base = ri < 4 ? Math.min(5, 2 + ri) : 5, st = Math.abs(p.streak); return base + (EVT === "paie" ? 2 : 0) + Math.min(5, Math.floor(p.gold / 10)) + (st >= 5 ? 3 : st >= 4 ? 2 : st >= 2 ? 1 : 0); };
+  const income = (p, ri) => { const base = ri < 4 ? Math.min(5, 2 + ri) : 5, st = Math.abs(p.streak); return base + (EVT === "paie" ? 2 : 0) + ((p.aug || []).includes("rente") ? 1 : 0) + Math.min(5, Math.floor(p.gold / 10)) + (st >= 5 ? 3 : st >= 4 ? 2 : st >= 2 ? 1 : 0); };
   function roundStart() {
     const ri = G.ri, inf = roundInfo(ri); G.info = inf; G.phase = "plan";
     G.players.filter(p => p.alive).forEach(p => {
       const mul = p.bot ? ({ facile: .75, normal: 1, difficile: 1.2 })[p.diff || G.diff] || 1 : 1;
       p.gold += Math.round(income(p, ri) * mul); if (ri > 0) addXp(p, 2);
       if (!p.lock) rollShop(p); p.lock = false;
+      if (AUGR.includes(ri) && (p.aug || []).length <= AUGR.indexOf(ri)) { if (p === G.me && !p.bot) p.choices.push({ t: "aug", opts: augOpts(p, G.rng) }); else if (p.bot && (!G.mp || MP.host)) takeAug(p, augOpts(p, G.rng)[0]); }
       if (p.bot && (!G.mp || MP.host)) botTurn(p);
     });
+    // duo en solo : le bot coéquipier offre l'unité qui te manque pour une fusion
+    if (G.duo && !G.mp && G.me.alive) { const m = G.players.find(q => q.team === G.me.team && q !== G.me); if (m && m.bot && m.alive) { const me = G.me, i = m.bench.findIndex(x => x && x.star === 1 && owned(me).filter(y => y.n === x.n && y.star === 1).length === 2), slot = me.bench.indexOf(null);
+        if (i >= 0 && slot >= 0) { const x = m.bench[i]; m.bench[i] = null; me.bench[slot] = x; merge(me); G.msg = `🎁 ${m.name} t'offre ${x.n} : fusion ★★ !`; } } }
   }
   /* ---------- bots ---------- */
   function botTurn(p) {
     const df = p.diff || G.diff, hard = df === "difficile", easy = df === "facile";
     const reserve = () => easy ? 0 : p.hp < 40 ? 0 : Math.min(hard ? 50 : 30, Math.floor(p.gold / 10) * 10);
-    const score = n => { const d = UN[n], own = owned(p), same = own.filter(x => x.n === n).length, tr = traitsOf(own); let s = same * 4 + d.c * (easy ? .2 : .6); [...d.o, d.cl].forEach(k => { if (tr[k]) s += easy ? .5 : 1.5; }); return s; };
+    const score = n => { const d = UN[n], own = owned(p), same = own.filter(x => x.n === n).length, tr = traitsOf(own); let s = same * 4 + d.c * (easy ? .2 : .6); [...d.o, d.cl].forEach(k => { if (tr[k]) s += easy ? .5 : hard && tr[k] >= 2 ? 2.6 : 1.5; }); return s; };
     for (let pass = 0; pass < (hard ? 4 : easy ? 1 : 2); pass++) {
       p.shop.map((n, i) => [n, i]).filter(x => x[0]).sort((a, b) => score(b[0]) - score(a[0])).forEach(([n, i]) => {
         const c = UN[n].c, sc = score(n), need = owned(p).length < p.lvl + 2;
@@ -508,15 +545,18 @@
     }
     // placement : les meilleures unités sur le plateau, mêlée devant, distance derrière
     const all = owned(p).sort((a, b) => UN[b.n].c * b.star * b.star + score(b.n) * .3 - (UN[a.n].c * a.star * a.star + score(a.n) * .3));
-    const seen = new Set(), on = [], off = []; all.forEach(x => { if (on.length < p.lvl && !seen.has(x.n)) { seen.add(x.n); on.push(x); } else off.push(x); });
+    const seen = new Set(), on = [], off = []; all.forEach(x => { if (on.length < cap(p) && !seen.has(x.n)) { seen.add(x.n); on.push(x); } else off.push(x); });
     while (off.length > 9) { const w = off.pop(); takeItems(p, w); G.pool[w.n] += Math.pow(3, w.star - 1); p.gold += sellVal(w); }
     p.board = on; p.bench = off.concat(Array(9).fill(null)).slice(0, 9);
     // objets : sur les meilleures unités du plateau, en fusionnant les composants
-    off.forEach(x => takeItems(p, x)); p.items = p.items.filter(id => { for (const x of on) { if ((x.it || []).length < 3 || isComp(id) && (x.it || []).some(isComp)) { if (equip(x, id)) return false; } } return true; });
+    off.forEach(x => takeItems(p, x));
+    p.items = p.items.filter(id => { const can = x => (x.it || []).length < 3 || isComp(id) && (x.it || []).some(isComp); let best = null, bs = -1;
+      on.forEach((x, i) => { if (!can(x)) return; let sc = (on.length - i) * .1; if (!easy) { const rc = recoItems(x.n), c0 = (x.it || []).find(isComp); if (isComp(id)) sc += c0 ? (rc.includes(FUS[[c0, id].sort().join("+")]) ? 6 : 1) : rc.some(r => ITEM[r].mk.includes(id)) ? 2 : 0; else if (rc.includes(id)) sc += 6; } if (sc > bs) { bs = sc; best = x; } });
+      return !(best && equip(best, id)); });
     const front = on.filter(x => CB[UN[x.n].cl].rg === 1), back = on.filter(x => CB[UN[x.n].cl].rg > 1), cols = [3, 2, 4, 1, 5, 0, 6];
     front.forEach((x, i) => { x.r = i < 7 ? 0 : 1; x.c = cols[i % 7]; }); back.forEach((x, i) => { x.r = i < 7 ? 3 : 2; x.c = cols[i % 7]; });
   }
-  const teamOf = p => ({ units: G.mp && p === G.me && MP.snap ? MP.snap : p.board.map(x => ({ n: x.n, star: x.star, r: x.r, c: x.c, ref: x, it: x.it || [] })) });
+  const teamOf = p => ({ aug: G.mp && p === G.me && MP.snapAug ? MP.snapAug : (p.aug || []).slice(), units: G.mp && p === G.me && MP.snap ? MP.snap : p.board.map(x => ({ n: x.n, star: x.star, r: x.r, c: x.c, ref: x, it: x.it || [] })) });
   function pveTeam(inf) {
     const L = []; let i = 0; const add = (n, k, sc, row) => { for (let j = 0; j < k; j++) { const m = MON[n]; L.push({ n, raw: { hp: m[0] * sc, ad: m[1] * sc, as: m[2], art: n }, r: row != null ? row : i > 4 ? 1 : 0, c: [3, 1, 5, 2, 4, 0, 6][i % 7] }); i++; } };
     if (!inf.boss) { PVE[inf.pve].forEach(([n, k]) => add(n, k, 1)); return { units: L }; }
@@ -548,7 +588,7 @@
     let ra, rb = null;
     if (inf.pve >= 0) { const t = inf.boss ? BOSS[inf.boss].t : 0, w = S.win === 0;
       if (w) { win(f.a, 0); f.a.gold += t ? 2 + t * 2 : 2; ra = { w: 1 }; } else ra = { w: 0, d: lose(f.a, inf.boss ? 2 + t * 2 : S.left[1]) };
-      ra.it = t ? (w ? giveItems(f.a, t === 3 ? 1 : 2, t) : giveItems(f.a, 1, 0)) : giveItems(f.a, 1, 0); }
+      ra.it = t ? (w ? loot(f.a, t === 3 ? 1 : 2, t) : loot(f.a, 1, 0)) : loot(f.a, 1, 0); ra.pick = f.a === G.me && !f.a.bot; }
     else if (S.win === 0) { win(f.a, 0); ra = { w: 1 }; if (f.b) rb = { w: 0, d: lose(f.b, S.left[0]) }; }
     else if (S.win === 1) { ra = { w: 0, d: lose(f.a, S.left[1]) }; if (f.b) { win(f.b, 1); rb = { w: 1 }; } }
     else { ra = { w: 0, d: lose(f.a, 1) }; if (f.b) rb = { w: 0, d: lose(f.b, 1) }; }
@@ -677,7 +717,11 @@
   async function mpTick() {
     if (!root || !MP.room) return mpStop(); let d; try { d = await rpc("room_state", { p_room: MP.room, p_after: 0 }); } catch (e) { mpStop(); MP.room = null; note(e.message); if (!G) menu(); return; }
     if (!root || !MP.room) return; MP.st = d; MP.host = d.host === API.uid; const s = d.state || {};
-    if (d.status === "jeu" && s.gid && s.gid !== MP.gid) { if ((s.order || []).includes(API.uid) && s.r === 0 && !s.prev) return mpBegin(s); if (!G) { const b = root.querySelector("#ar-room"); if (b) b.innerHTML = `<p>Une partie est en cours dans ce salon. Attends qu'elle se termine.</p><div class="ar-row"><button class="ar-b" data-act="mpquit">Quitter le salon</button></div>`; } return; }
+    if (d.status === "jeu" && s.gid && s.gid !== MP.gid) { if ((s.order || []).includes(API.uid) && s.r === 0 && !s.prev) return mpBegin(s); if (!G) { const sv = loadSave(); if (sv && sv.mp && sv.gid === s.gid && (sv.G.ri === s.r || sv.G.ri === s.r - 1 && s.prev && s.prev.r === sv.G.ri)) { MP.gid = s.gid; MP.gifts = []; music("main"); restore(sv); const un = b => (b || []).filter(x => UN[x.n]).map(x => ({ n: x.n, star: x.s || 1, r: x.r, c: x.c, it: x.it || [] }));
+          if (sv.G.ri === s.r) { const mine = (s.by || {})[API.uid]; if (mine) { G.phase = "wait"; MP.sent = G.ri; MP.snap = un(mine.b || G.lastSub); MP.snapAug = mine.aug || G.lastAug || []; drawAll(); } else startTimer(); }
+          else { const mine = (s.prev.by || {})[API.uid]; MP.snap = un(mine && mine.b ? mine.b : G.lastSub); MP.snapAug = (mine && mine.aug) || G.lastAug || []; MP.sent = G.ri; G.phase = "wait"; mpGo(s.prev.by || {}); }
+          note("Partie reprise."); return; }
+        const b = root.querySelector("#ar-room"); if (b) b.innerHTML = `<p>Une partie est en cours dans ce salon. Attends qu'elle se termine.</p><div class="ar-row"><button class="ar-b" data-act="mpquit">Quitter le salon</button></div>`; } return; }
     if (G && G.mp && MP.gid && s.gid === MP.gid && G.phase === "over") { if (d.status === "jeu" && s.r !== MP.sent) { MP.sent = s.r; rpc("ar_submit", { p_room: MP.room, p_r: s.r, p_data: { dead: 1 } }).catch(() => {}); } return; }
     if (G && G.mp && MP.gid && s.gid === MP.gid) return mpSync(s);
     if (d.status !== "jeu") { if (G && G.mp && G.phase !== "over") { note("La partie a été arrêtée."); stopLoop(); clearInterval(UI.timer); G = null; mpRoom(); return; } if (G) return;
@@ -694,10 +738,10 @@
   // « Prêt » : j'envoie mon plateau (l'hôte envoie aussi ceux des bots et les PV de tout le monde)
   async function mpReady() {
     if (!G || G.phase !== "plan") return; clearInterval(UI.timer); dragEnd(); fillBoard(G.me); G.phase = "wait"; UI.sel = null; UI.info = null; UI.selItem = null; drawAll(); $("#ar-timer").textContent = "en attente des autres…";
-    MP.snap = G.me.board.map(x => ({ n: x.n, star: x.star, r: x.r, c: x.c, ref: x, it: (x.it || []).slice() }));
-    const d = G.me.alive ? { b: packBoard(G.me), lvl: G.me.lvl } : { dead: 1 };
+    G.lastSub = packBoard(G.me); G.lastAug = (G.me.aug || []).slice(); MP.snapAug = (G.me.aug || []).slice(); MP.snap = G.me.board.map(x => ({ n: x.n, star: x.star, r: x.r, c: x.c, ref: x, it: (x.it || []).slice() }));
+    const d = G.me.alive ? { b: packBoard(G.me), lvl: G.me.lvl, aug: G.me.aug || [] } : { dead: 1 };
     if (MP.gifts.length) { d.gift = MP.gifts; MP.gifts = []; }
-    if (MP.host) { d.bots = {}; G.players.forEach(p => { if (p.bot && p.alive) d.bots[p.id] = { b: packBoard(p), lvl: p.lvl }; }); d.hp = G.players.map(p => p.hp); }
+    if (MP.host) { d.bots = {}; G.players.forEach(p => { if (p.bot && p.alive) d.bots[p.id] = { b: packBoard(p), lvl: p.lvl, aug: p.aug || [] }; }); d.hp = G.players.map(p => p.hp); }
     MP.sent = G.ri; try { await rpc("ar_submit", { p_room: MP.room, p_r: G.ri, p_data: d }); } catch (e) { note(e.message); MP.sent = -1; G.phase = "plan"; drawAll(); }
   }
   function mpSync(s) {
@@ -706,8 +750,8 @@
       if (s.prev && s.prev.r === G.ri) { MP.tick = 0; mpGo(s.prev.by || {}); } }
   }
   function mpGo(by) {
-    let hostD = null; G.players.forEach(p => { if (p.bot || !p.uid) return; const d = by[p.uid]; if (d && MP.st && p.uid === MP.st.host) hostD = d; if (p === G.me || !d || d.afk || d.dead) return; p.board = unpack(d.b); p.lvl = d.lvl || p.lvl; });
-    if (hostD && !MP.host) { G.players.forEach(p => { if (p.bot && hostD.bots && hostD.bots[p.id]) { p.board = unpack(hostD.bots[p.id].b); p.lvl = hostD.bots[p.id].lvl || p.lvl; } }); if (Array.isArray(hostD.hp)) hostD.hp.forEach((h, i) => { const p = G.players[i]; if (p && p.alive && typeof h === "number" && h > 0) p.hp = h; }); }
+    let hostD = null; G.players.forEach(p => { if (p.bot || !p.uid) return; const d = by[p.uid]; if (d && MP.st && p.uid === MP.st.host) hostD = d; if (p === G.me || !d || d.afk || d.dead) return; p.board = unpack(d.b); p.lvl = d.lvl || p.lvl; p.aug = (d.aug || []).filter(k => AUG[k]); });
+    if (hostD && !MP.host) { G.players.forEach(p => { if (p.bot && hostD.bots && hostD.bots[p.id]) { p.board = unpack(hostD.bots[p.id].b); p.lvl = hostD.bots[p.id].lvl || p.lvl; p.aug = (hostD.bots[p.id].aug || []).filter(k => AUG[k]); } }); if (Array.isArray(hostD.hp)) hostD.hp.forEach((h, i) => { const p = G.players[i]; if (p && p.alive && typeof h === "number" && h > 0) p.hp = h; }); }
     if (G.duo) { const m = mateOf(G.me), d = m && m.uid && by[m.uid]; if (d && d.gift) receive(d.gift); }
     G.phase = "plan"; startFight();
   }
@@ -717,7 +761,7 @@
   let API = null, root = null, UI = { sel: null, speed: 1, timer: null, tleft: 0, sim: null, loop: null, info: null };
   const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[m]));
   const $ = s => root.querySelector(s);
-  const artOf = n => { const id = IDS[n] || IDS[(UN[n] || {}).n]; const a = (API && id && API.art(id)) || {}; return { url: a.url || "", px: a.px == null ? 50 : a.px, py: a.py == null ? 25 : a.py, nm: a.nm || n }; };
+  const artOf = n => { const id = IDS[n] || IDS[(UN[n] || {}).n]; const a = (API && id && API.art(id)) || {}; const o = API && API.own && id ? API.own(id) : null; return { url: a.url || "", px: a.px == null ? 50 : a.px, py: a.py == null ? 25 : a.py, nm: a.nm || n, own: o ? (o.s ? "S" : o.r === "M" || o.r === "L" ? o.r : "") : "" }; };
   const bg = n => { const a = artOf(n); return a.url ? `background-image:url('${String(a.url).replace(/'/g, "%27")}');background-position:${a.px}% ${a.py}%` : ""; };
   const stars = s => "★".repeat(s);
   const RECO = { col: [0], bag: [0, 1], ass: [3], tir: [3], mag: [3], sou: [2, 3], str: [2] };
@@ -727,7 +771,7 @@
   const RECI = { col: ["wd40", "raclette", "cactus", "gourde"], bag: ["tournevis", "marteau", "poele", "doudou"], ass: ["opinel", "ciseaux", "lancepierre", "des"], tir: ["spinner", "ventilo", "lancepierre", "ventouse"], mag: ["calculatrice", "telecommande", "loupe", "allumette"], sou: ["telecommande", "banane", "enceinte", "thermos"], str: ["telecommande", "enceinte", "parapluie", "chargeur"] };
   const recoItems = n => { const d = UN[n], sp = d.s, L = RECI[d.cl].slice(); if (sp.pas === "goldkill") L.unshift("ticket"); if (sp.k === "summon" || sp.k === "transform") L.unshift("telecommande"); if (sp.stun && d.cl !== "mag") L.unshift("bouillotte"); if (d.c >= 4) L.splice(2, 0, "doudou"); return [...new Set(L)].slice(0, 3); };
   const TIPS = ["Garde 10, 20, 30… or : chaque dizaine rapporte +1 or par manche (5 max).", "Trois cartes identiques fusionnent en ★★. N'achète pas tout : vise des paires.", "Glisse une unité vers la boutique pour la vendre.", "Les Colosses devant, les Tireurs et les Mages au fond.", "Une série de défaites rapporte aussi de l'or : perdre tôt n'est pas grave.", "Le cadenas 🔒 garde ta boutique pour la manche suivante.", "Monte de niveau pour poser plus d'unités et voir des cartes plus rares.", "Touche une synergie à gauche pour voir ses paliers et ses unités.", "Deux unités identiques sur le plateau ne comptent qu'une fois pour les synergies."];
-  const tokenHTML = (n, star, cost, extra, its) => `<div class="ar-tok c${cost} s${star} ${extra || ""}"><div class="ar-hex" style="${bg(n)}"></div><span class="ar-st">${stars(star)}</span>${extra === "pp" && UN[n] ? `<span class="ar-pp ${POSI[UN[n].cl][2]}">${POSI[UN[n].cl][0]}</span>` : ""}${its && its.length ? `<span class="ar-its">${its.map(id => `<i class="${isComp(id) ? "comp" : ""}">${ITEM[id].ic}</i>`).join("")}</span>` : ""}</div>`;
+  const tokenHTML = (n, star, cost, extra, its) => `<div class="ar-tok c${cost} s${star} ${extra || ""} ${(extra === "pp" || extra === "mine") && artOf(n).own ? "own" + artOf(n).own : ""}"><div class="ar-hex" style="${bg(n)}"></div><span class="ar-st">${stars(star)}</span>${(extra === "pp" || extra === "ps") && UN[n] ? `<span class="ar-pp ${POSI[UN[n].cl][2]}">${POSI[UN[n].cl][0]}</span>` : ""}${its && its.length ? `<span class="ar-its">${its.map(id => `<i class="${isComp(id) ? "comp" : ""}">${ITEM[id].ic}</i>`).join("")}</span>` : ""}</div>`;
   const hexPos = (R, C) => `left:${((C + (R & 1) * .5) / 7.5 * 100).toFixed(3)}%;top:${(R * .75 / 6.25 * 100).toFixed(3)}%`;
   function open(api) {
     API = api; if (root) root.remove();
@@ -738,6 +782,7 @@
   function menu() {
     root.innerHTML = `<div class="ar-menu"><h1>⚔️ Wiki Arena</h1><p class="ar-adm">🔒 En construction : visible seulement par les admins</p>
       <p>Recrute des cartes dans la boutique, place-les sur ton plateau et regarde-les se battre. Trois cartes identiques fusionnent en ★★, puis en ★★★. Réunis des cartes du même univers ou de la même classe pour activer des synergies. Dernier joueur en vie : victoire !</p>
+      ${(() => { const sv = loadSave(); if (!sv || sv.mp) return ""; const r = sv.G.ri, st = r < 3 ? 1 : 2 + Math.floor((r - 3) / 7), k = r < 3 ? r + 1 : (r - 3) % 7 + 1; return `<div class="ar-box ar-resume"><h3>Partie en cours</h3><p>${sv.G.duo ? "Duo" : "Solo"} · manche ${st}-${k} · ❤️ ${Math.max(0, sv.G.players[sv.G.mei].hp)}</p><button class="ar-b big go" data-act="resume">▶ Reprendre</button></div>`; })()}
       <div class="ar-box"><h3>Solo contre 7 bots</h3>
         <div class="ar-diff"><span>Difficulté :</span>${[["facile", "Facile"], ["normal", "Normal"], ["difficile", "Difficile"], ["variable", "🎲 Variable"]].map(([k, l]) => `<button class="ar-b ${k === "normal" ? "on" : ""}" data-diff="${k}">${l}</button>`).join("")}</div><p class="ar-hint">Variable : chaque bot a sa propre difficulté, tirée au hasard.</p>
         <label class="ar-opt">Cartes <select id="ar-set"><option value="1">Set 1 (58 unités)</option><option value="2">Set 2 (59 unités)</option><option value="mix">Les deux mélangés</option><option value="alea">🎲 Set au hasard (1 ou 2)</option></select></label>
@@ -745,10 +790,10 @@
         <label class="ar-opt">Événement <select id="ar-ev">${evOpts("")}</select></label>
         <button class="ar-b big go" data-act="start">Jouer en solo</button></div>
       <div class="ar-box"><h3>Multijoueur</h3><p>Jusqu'à 8 joueurs ; les places libres peuvent être tenues par des bots.</p><button class="ar-b big" data-act="multi">Jouer avec des amis</button></div>
-      <div class="ar-row"><button class="ar-b" data-act="help">Règles</button><button class="ar-b" data-act="quit">Quitter</button></div></div>`;
+      <div class="ar-row"><button class="ar-b" data-act="board">🏆 Classement</button>${API.admin ? `<button class="ar-b" data-act="stats">📊 Équilibrage</button>` : ""}<button class="ar-b" data-act="help">Règles</button><button class="ar-b" data-act="quit">Quitter</button></div></div>`;
     root.onclick = e => { const d = e.target.closest("[data-diff]"); if (d) { root.querySelectorAll("[data-diff]").forEach(b => b.classList.toggle("on", b === d)); return; }
-      const a = e.target.closest("[data-act]"); if (!a) return; if (a.dataset.act === "quit") return close(); if (a.dataset.act === "help") return help(); if (a.dataset.act === "multi") return mpLobby();
-      if (a.dataset.act === "start") { music("main"); newGame((root.querySelector("[data-diff].on") || {}).dataset.diff || "normal", 0, { event: pickEvent(root.querySelector("#ar-ev").value), duo: root.querySelector("#ar-mode").value === "duo", set: pickSet(root.querySelector("#ar-set").value) }); build(); note("Cartes : " + SETN[G.set] + (G.event ? "" : " · pas d'événement")); if (G.event) evBanner(); } };
+      const a = e.target.closest("[data-act]"); if (!a) return; if (a.dataset.act === "quit") return close(); if (a.dataset.act === "help") return help(); if (a.dataset.act === "multi") return mpLobby(); if (a.dataset.act === "board") return boardScreen(); if (a.dataset.act === "stats") return statsScreen(); if (a.dataset.act === "resume") { const sv = loadSave(); if (sv && !sv.mp) { music("main"); restore(sv); startTimer(); } return; }
+      if (a.dataset.act === "start") { music("main"); newGame((root.querySelector("[data-diff].on") || {}).dataset.diff || "normal", 0, { event: pickEvent(root.querySelector("#ar-ev").value), duo: root.querySelector("#ar-mode").value === "duo", set: pickSet(root.querySelector("#ar-set").value) }); build(); note("Cartes : " + SETN[G.set] + (G.event ? "" : " · pas d'événement")); { let seen = 1; try { seen = localStorage.getItem("wc-arena-tuto"); } catch (_) {} if (!seen && !G.event) tuto(); } if (G.event) evBanner(); } };
   }
   function help() {
     const m = document.createElement("div"); m.className = "ar-modal"; m.innerHTML = `<div class="ar-sheet"><h2>Règles</h2>
@@ -760,14 +805,19 @@
       <p><b>Jouer :</b> touche une unité pour la sélectionner et voir sa fiche, puis touche une case de ton plateau ou du banc pour la déplacer. « Vendre » la rend contre de l'or.</p>
       <p><b>Objets :</b> les monstres et les boss donnent des composants. Deux composants sur la même unité fusionnent. Le bouton « 📖 Objets » montre toutes les fusions ; l'aimant 🧲 récupère les objets d'une unité.</p>
       <p><b>Boss :</b> la dernière manche de chaque acte (💀) est un boss : un facile, deux moyens puis un boss final, différents à chaque partie. Sa fiche s'affiche pendant la préparation.</p>
+      <p><b>Améliorations :</b> aux manches 2-1, 3-2 et 4-2, tu choisis un bonus parmi trois, valable jusqu'à la fin de la partie.</p>
+      <p><b>Butin :</b> après les monstres et les boss, tu choisis un objet parmi trois.</p>
+      <p><b>Fragments :</b> une partie d'au moins 10 manches rapporte des fragments selon ta place (40 pour la victoire), dans la limite du plafond du jour.</p>
       <p><b>Duo :</b> deux joueurs partagent les mêmes PV. Chacun mène son combat ; si tu gagnes le tien, tes survivants partent en renfort chez ton coéquipier. Tu peux aussi lui donner une unité par manche (bouton 🎁 sur sa fiche).</p>
       <p><b>Mort subite :</b> après 30 s de combat, les dégâts augmentent et les soins diminuent jusqu'à ce qu'un camp tombe.</p>
       <h3>Synergies</h3>${Object.keys(TR).map(k => `<p>${TICO(k)} <b>${TNAME(k)}</b> (${TR[k].t.join(" / ")}) : ${TR[k].t.map((t, i) => TR[k].d(TR[k].v[i])).slice(-1)[0].replace(/\d+(\.\d+)?/g, m => m)}</p>`).join("")}
+      <button class="ar-b" data-act="tuto">🎓 Revoir le tutoriel</button>
       <p class="ar-hint">🎵 Musiques libres de droits : Infraction – No Copyright Music, MOKKA et Cold Cinema.</p>
       <button class="ar-b" data-x>Fermer</button></div>`;
     root.appendChild(m); m.onclick = e => { if (e.target === m || e.target.closest("[data-x]")) m.remove(); };
   }
-  function build() {
+  function build() { build0(); startTimer(); }
+  function build0() {
     root.innerHTML = `<div class="ar-top"><span class="ar-me" id="ar-me"></span><div class="ar-stage"><div class="ar-stin"><span class="ar-round" id="ar-round"></span><span class="ar-timer" id="ar-timer"></span></div><i class="ar-tbar"><u id="ar-tbar"></u></i></div>
         <span class="ar-tools"><button class="ar-b mini" data-act="vol">🔊</button><button class="ar-b mini" data-act="speed" id="ar-speed">×1</button><button class="ar-b mini" data-act="help">?</button><button class="ar-b mini" data-act="quit">✕</button></span></div>
       <div class="ar-mid"><div class="ar-left"><h4 class="ar-h">Synergies</h4><div class="ar-traits" id="ar-traits"></div><div class="ar-info" id="ar-info"></div></div>
@@ -778,14 +828,14 @@
       <div class="ar-shopbar" id="ar-shopbar"><div class="ar-eco" id="ar-eco"></div><div class="ar-shop" id="ar-shop"></div><div class="ar-side" id="ar-side"></div><div class="ar-sellz" id="ar-sellz">🪙 Lâche ici pour vendre</div></div>`;
     root.onclick = onClick; root.onpointerdown = dragDown;
     $("#ar-vol").oninput = e => { const t = e.target; if (t.dataset.vol === "mu") muVol(+t.value); else { sfVol(+t.value); sfx("buy"); } t.nextElementSibling.textContent = t.value; };
-    drawAll(); startTimer();
+    drawAll();
   }
   function drawAll() { drawTop(); drawTraits(); drawBoard(); drawBench(); drawItems(); drawShop(); drawPlayers(); drawInfo(); }
   function drawTop() { const i = G.info, base = i.st === 1 ? 0 : 3 + (i.st - 2) * 7, n = i.st === 1 ? 3 : 7; let h = `<b class="ar-stg">${i.st}-${i.k}</b>`;
     for (let k = 0; k < n; k++) { const ri = base + k, inf = roundInfo(ri), d = G.hist[ri]; h += `<i class="ar-ri ${d === 1 ? "w" : d === 0 ? "l" : ""} ${ri === G.ri ? "cur" : ""}">${inf.boss ? "💀" : inf.pve >= 0 ? "🐾" : "⚔️"}</i>`; }
-    $("#ar-round").innerHTML = h; $("#ar-me").innerHTML = `<span class="ar-av">${G.me.av}</span><span>❤️ <b>${Math.max(0, G.me.hp)}</b></span>${G.event ? `<button class="ar-evc" data-act="event">${EVENTS[G.event][0]} ${EVENTS[G.event][1]}</button>` : ""}`; }
+    $("#ar-round").innerHTML = h; $("#ar-me").innerHTML = `<span class="ar-av">${G.me.av}</span><span>❤️ <b>${Math.max(0, G.me.hp)}</b></span>${G.event ? `<button class="ar-evc" data-act="event">${EVENTS[G.event][0]} ${EVENTS[G.event][1]}</button>` : ""}${(G.me.aug || []).length ? `<button class="ar-evc aug" data-act="augs">${G.me.aug.map(k => AUG[k][0]).join("")}</button>` : ""}`; }
   function drawTraits() {
-    const cnt = traitsOf(G.me.board), keys = Object.keys(cnt).sort((a, b) => (tier(b, cnt[b]) - tier(a, cnt[a])) || cnt[b] - cnt[a]);
+    const cnt = traitsOf(G.me.board, G.me.aug), keys = Object.keys(cnt).sort((a, b) => (tier(b, cnt[b]) - tier(a, cnt[a])) || cnt[b] - cnt[a]);
     $("#ar-traits").innerHTML = keys.map(k => { const ti = tier(k, cnt[k]), T = TR[k];
       return `<button class="ar-tr ${ti >= 0 ? "on t" + Math.min(2, ti + (T.t.length < 3 ? 1 : 0)) : ""}" data-trait="${k}"><span class="ar-tri">${TICO(k)}</span><b>${cnt[k]}</b><span class="ar-trx"><strong>${TNAME(k)}</strong><em>${T.t.map((t, i) => `<i class="${i <= ti ? "ok" : ""}">${t}</i>`).join(" › ")}</em><small>${ti >= 0 ? T.d(T.v[ti]) : `Encore ${T.t[0] - cnt[k]} pour l'activer.`}</small></span></button>`; }).join("") || `<span class="ar-hint">Place des unités du même univers ou de la même classe pour activer des synergies.</span>`;
   }
@@ -797,7 +847,7 @@
     $("#ar-cells").innerHTML = h; if (G.phase === "plan") $("#ar-live").innerHTML = "";
     const b = $("#ar-board"); b.classList.toggle("fight", G.phase === "fight");
   }
-  function drawBench() { $("#ar-bench").innerHTML = G.me.bench.map((x, i) => `<div class="ar-slot ${x && UI.sel === x ? "sel" : ""}" data-bench="${i}">${x ? tokenHTML(x.n, x.star, UN[x.n].c, "pp", x.it) : ""}</div>`).join("") + `<span class="ar-cap">${G.me.board.length}/${G.me.lvl}</span>`; }
+  function drawBench() { $("#ar-bench").innerHTML = G.me.bench.map((x, i) => `<div class="ar-slot ${x && UI.sel === x ? "sel" : ""}" data-bench="${i}">${x ? tokenHTML(x.n, x.star, UN[x.n].c, "pp", x.it) : ""}</div>`).join("") + `<span class="ar-cap">${G.me.board.length}/${cap(G.me)}</span>`; }
   function drawItems() { const p = G.me; $("#ar-items").innerHTML = `<button class="ar-it mag ${UI.selItem === "magnet" ? "sel" : ""}" data-item="magnet" title="Aimant">🧲</button>` + p.items.map((id, i) => `<button class="ar-it ${isComp(id) ? "comp" : "full"} ${UI.selItem === i ? "sel" : ""}" data-item="${i}">${ITEM[id].ic}</button>`).join("") + (p.items.length ? (p.items.filter(isComp).length >= 2 ? `<span class="ar-hint">Glisse un composant sur un autre pour les fusionner.</span>` : "") : `<span class="ar-hint">Tes objets arrivent ici : bats les monstres et les boss.</span>`) + `<button class="ar-b ar-guide" data-act="guide">📖 Objets</button>`; }
   const mateOf = p => G.duo ? G.players.find(q => q.team === p.team && q !== p) : null;
   // duo : donne une unité (avec ses objets) à son coéquipier, une fois par manche
@@ -841,10 +891,10 @@
   }
   function scout(p) {
     if (EVT === "brouillard") { sfx("err"); return note("🌫️ Brouillard : impossible d'observer les autres équipes."); }
-    const cnt = traitsOf(p.board), act = Object.keys(cnt).filter(k => tier(k, cnt[k]) >= 0), m = document.createElement("div"); m.className = "ar-modal";
-    let cells = ""; for (let r = 0; r < 4; r++) for (let c = 0; c < 7; c++) { const x = p.board.find(u => u.r === r && u.c === c); cells += `<div class="ar-cell mine" style="${hexPos(r, c)}">${x ? tokenHTML(x.n, x.star, UN[x.n].c, "pp", x.it) : ""}</div>`; }
+    const cnt = traitsOf(p.board, p.aug), act = Object.keys(cnt).filter(k => tier(k, cnt[k]) >= 0), m = document.createElement("div"); m.className = "ar-modal";
+    let cells = ""; for (let r = 0; r < 4; r++) for (let c = 0; c < 7; c++) { const x = p.board.find(u => u.r === r && u.c === c); cells += `<div class="ar-cell mine" style="${hexPos(r, c)}">${x ? tokenHTML(x.n, x.star, UN[x.n].c, "ps", x.it) : ""}</div>`; }
     m.innerHTML = `<div class="ar-sheet ar-scout"><h2>${p.av} ${esc(p.name)} <small>❤️ ${Math.max(0, p.hp)} · niveau ${p.lvl}${p.diff ? " · bot " + p.diff : ""}</small></h2><div class="ar-sboard">${cells}</div>
-      <p class="ar-ctr">${act.map(k => `${TICO(k)} ${TNAME(k)} ${cnt[k]}`).join(" · ") || "Aucune synergie active."}</p>
+      <p class="ar-ctr">${act.map(k => `${TICO(k)} ${TNAME(k)} ${cnt[k]}`).join(" · ") || "Aucune synergie active."}</p>${(p.aug || []).length ? `<p class="ar-gl">Améliorations : ${p.aug.map(k => AUG[k][0] + " " + AUG[k][1]).join(" · ")}</p>` : ""}
       ${p.board.slice().sort((a, b) => UN[b.n].c * b.star - UN[a.n].c * a.star).map(x => `<p class="ar-gl"><b>${esc(artOf(x.n).nm)}</b> ${stars(x.star)} · ${TNAME(UN[x.n].cl)}${(x.it || []).length ? " · " + x.it.map(id => ITEM[id].ic + " " + ITEM[id].n).join(", ") : ""}</p>`).join("")}
       <button class="ar-b" data-x>Fermer</button></div>`;
     root.appendChild(m); m.onclick = e => { if (e.target === m || e.target.closest("[data-x]")) m.remove(); };
@@ -886,13 +936,69 @@
     else if (tg.cell) { const [r, c] = tg.cell, there = p.board.find(u => u.r === r && u.c === c); if (there === s) { UI.sel = null; UI.info = null; return drawAll(); }
       if (onB) { if (there) { there.r = s.r; there.c = s.c; } s.r = r; s.c = c; }
       else { const bi = p.bench.indexOf(s); if (there) { p.board.splice(p.board.indexOf(there), 1); p.bench[bi] = there; delete there.r; delete there.c; s.r = r; s.c = c; p.board.push(s); }
-        else { if (p.board.length >= p.lvl) { sfx("err"); note(`Niveau ${p.lvl} : ${p.lvl} unité${p.lvl > 1 ? "s" : ""} max sur le plateau.`); UI.sel = null; UI.info = null; return drawAll(); } p.bench[bi] = null; s.r = r; s.c = c; p.board.push(s); } }
+        else { if (p.board.length >= cap(p)) { sfx("err"); note(`Niveau ${p.lvl} : ${cap(p)} unité${cap(p) > 1 ? "s" : ""} max sur le plateau.`); UI.sel = null; UI.info = null; return drawAll(); } p.bench[bi] = null; s.r = r; s.c = c; p.board.push(s); } }
       sfx("place"); }
     else if (tg.bench != null) { const i = tg.bench, there = p.bench[i]; if (there === s) { UI.sel = null; UI.info = null; return drawAll(); }
       if (onB) { p.board.splice(p.board.indexOf(s), 1); if (there) { there.r = s.r; there.c = s.c; p.board.push(there); } delete s.r; delete s.c; p.bench[i] = s; }
       else { const bi = p.bench.indexOf(s); p.bench[bi] = there || null; p.bench[i] = s; }
       sfx("place"); }
     UI.sel = null; UI.info = null; drawAll();
+  }
+  /* ---------- choix en attente : butin ou amélioration ---------- */
+  function showChoice() {
+    if (!root || !G || G.phase === "over") return; const old = root.querySelector(".ar-choice"); if (old) old.remove(); const c = G.me.choices[0]; if (!c) return;
+    const m = document.createElement("div"); m.className = "ar-modal ar-choice";
+    m.innerHTML = `<div class="ar-sheet ar-chsheet"><h2>${c.t === "aug" ? "⭐ Choisis une amélioration" : "🎁 Choisis ton butin"}</h2><p class="ar-hint">${c.t === "aug" ? "Elle reste active jusqu'à la fin de la partie." : "Un objet au choix parmi trois."}${G.me.choices.length > 1 ? ` (encore ${G.me.choices.length - 1} choix ensuite)` : ""}</p>
+      <div class="ar-chrow">${c.opts.map((id, i) => { const A = c.t === "aug" ? AUG[id] : null, I = A ? null : ITEM[id]; return `<button class="ar-chopt ${c.t}" data-pick="${i}"><i>${A ? A[0] : I.ic}</i><b>${A ? A[1] : I.n}</b><span>${A ? A[2] : isComp(id) ? I.d : I.t}</span>${I && !isComp(id) ? `<small>${stTxt(I.st)}</small><em>💡 ${I.tip}</em>` : I ? `<small>composant · se fusionne avec un autre</small>` : ""}</button>`; }).join("")}</div></div>`;
+    root.appendChild(m); m.onclick = e => { const b = e.target.closest("[data-pick]"); if (!b) return; const r = choose(G.me, +b.dataset.pick); sfx(r && r.t === "aug" ? "lvl" : "buy"); m.remove(); drawAll(); saveGame(); showChoice(); };
+  }
+  function autoChoose() { let n = 0; while (G.me.choices.length) { choose(G.me, 0); n++; } const m = root && root.querySelector(".ar-choice"); if (m) m.remove(); if (n) note("Choix automatique : tu n'avais pas choisi à temps."); }
+  /* ---------- sauvegarde : reprendre après une coupure ---------- */
+  const SAVEK = "wc-arena-save";
+  function saveGame() { if (!G || G.phase === "over" || typeof localStorage === "undefined") return; try { const o = Object.assign({}, G, { rng: undefined, me: undefined, fights: undefined, rs: G.rng.a, mei: G.me.id, phase: "plan" }); localStorage.setItem(SAVEK, JSON.stringify({ t: Date.now(), mp: !!G.mp, gid: G.mp ? MP.gid : null, uid: API && API.uid, G: o })); } catch (_) {} }
+  function loadSave() { try { const o = JSON.parse(localStorage.getItem(SAVEK) || "null"); return o && o.G && Date.now() - o.t < 864e5 && (!API || !o.uid || o.uid === API.uid) ? o : null; } catch (_) { return null; } }
+  function clearSave() { try { localStorage.removeItem(SAVEK); } catch (_) {} }
+  function restore(sv) { G = sv.G; G.rng = rng32(G.rs); G.me = G.players[G.mei]; G.fights = null; G.phase = "plan"; EVT = G.event && EVENTS[G.event] ? G.event : null; SET = G.set === "mix" ? SETS[1].concat(SETS[2]) : SETS[G.set] || SETS[1]; G.players.forEach(p => { p.choices = p.choices || []; p.aug = p.aug || []; }); UI.sel = UI.info = UI.selItem = null; UI.sim = UI.view = null; build0(); }
+  /* ---------- fin de partie : enregistrement, fragments ---------- */
+  async function logGame() {
+    if (!G || G.logged || !API || !API.rpc) return; G.logged = true; clearSave(); const L = (G.me.place === 1 ? G.me.board : G.lastBoard || []).slice(0, 12).map(x => ({ n: x.n, s: x.star, it: x.it || [] }));
+    try { const r = await rpc("ar_log", { p: { mode: G.duo ? "duo" : "solo", set: String(G.set), mp: !!G.mp, diff: G.diff, event: G.event, place: G.duo ? Math.ceil(G.me.place / 2) : G.me.place, n: G.duo ? 4 : G.n, rounds: G.ri, board: L } });
+      const el = root && root.querySelector("#ar-rew"); if (r && r.frag > 0 && API.addFrag) API.addFrag(r.frag);
+      G.rewTxt = r && r.frag > 0 ? `+${r.frag} fragments ✦` : G.ri < 10 ? "Pas de fragments : il faut jouer au moins 10 manches." : r && r.left === 0 ? "Plafond de fragments du jour atteint." : "Pas de fragments pour cette place."; const el2 = root && root.querySelector("#ar-rew"); if (el2) el2.textContent = G.rewTxt; if (false) el.textContent = r && r.frag > 0 ? `+${r.frag} fragments ✦` : G.ri < 10 ? "Pas de fragments : il faut jouer au moins 10 manches." : r && r.left === 0 ? "Plafond de fragments du jour atteint." : "Pas de fragments pour cette place."; } catch (_) {}
+  }
+  /* ---------- classement et statistiques ---------- */
+  async function boardScreen() {
+    root.innerHTML = `<div class="ar-menu"><h1>🏆 Classement</h1><div id="ar-lb"><p>Chargement…</p></div><div class="ar-row"><button class="ar-b" data-act="back">Retour</button></div></div>`; root.onclick = e => { if (e.target.closest("[data-act=back]")) menu(); };
+    let d; try { d = await rpc("ar_board"); } catch (e) { return note(e.message); } const b = root.querySelector("#ar-lb"); if (!b) return;
+    b.innerHTML = `<div class="ar-box"><h3>Joueurs</h3>${d.top.length ? `<div class="ar-tbl"><b>Joueur</b><b>🏆</b><b>Podiums</b><b>Parties</b>${d.top.map(x => `<span>${esc(API.name(x.u))}</span><span>${x.wins}</span><span>${x.top}</span><span>${x.games}</span>`).join("")}</div><p class="ar-hint">Seules les parties d'au moins 10 manches comptent. Podium : 4 premiers (2 premières équipes en duo).</p>` : `<p>Aucune partie enregistrée pour l'instant.</p>`}</div>
+      <div class="ar-box"><h3>Mes dernières parties</h3>${d.fav ? `<p>Ton unité fétiche : <b>${esc(d.fav)}</b></p>` : ""}${d.mine.map(g => `<div class="ar-lrow"><b>${g.place === 1 ? "🏆 1re" : g.place + "e"}${g.mode === "duo" ? " (duo)" : ""}</b><span>${new Date(g.at).toLocaleDateString("fr-BE")} · ${g.mp ? "multijoueur" : "solo"} · set ${esc(g.set)} · ${g.rounds} manches${g.frag ? ` · +${g.frag} ✦` : ""}</span><span class="ar-plm">${(g.board || []).slice(0, 8).map(x => UN[x.n] ? `<i class="c${UN[x.n].c}" style="${bg(x.n)}"></i>` : "").join("")}</span></div>`).join("") || `<p>Tu n'as pas encore terminé de partie.</p>`}</div>`;
+  }
+  async function statsScreen() {
+    root.innerHTML = `<div class="ar-menu"><h1>📊 Équilibrage</h1><div id="ar-lb"><p>Chargement…</p></div><div class="ar-row"><button class="ar-b" data-act="back">Retour</button></div></div>`; root.onclick = e => { if (e.target.closest("[data-act=back]")) menu(); };
+    let d; try { d = await rpc("ar_stats"); } catch (e) { return note(e.message); } const b = root.querySelector("#ar-lb"); if (!b) return;
+    const tbl = (L, nm) => L.length ? `<div class="ar-tbl t4"><b>Nom</b><b>Parties</b><b>Place moy.</b><b>🏆</b>${L.map(x => `<span>${esc(nm(x.n))}</span><span>${x.games}</span><span>${x.place}</span><span>${x.wins == null ? "" : x.wins}</span>`).join("")}</div>` : `<p>Pas encore de données.</p>`;
+    b.innerHTML = `<p>${d.games} partie${d.games > 1 ? "s" : ""} d'au moins 10 manches. Les unités et objets comptés sont ceux du plateau final. Une place moyenne basse signifie « souvent bien classé ».</p><div class="ar-box"><h3>Unités</h3>${tbl(d.units, n => n)}</div><div class="ar-box"><h3>Objets</h3>${tbl(d.items, n => ITEM[n] ? ITEM[n].ic + " " + ITEM[n].n : n)}</div>`;
+  }
+  /* ---------- tutoriel guidé ---------- */
+  const TUTO = [
+    ["#ar-shop", "La boutique", "Cinq cartes par manche. Touche une carte pour l'acheter. Le bandeau du haut indique où la placer (Devant, Milieu, Fond), et le « i » ouvre sa fiche."],
+    ["#ar-eco", "Niveau et relance", "« Acheter XP » fait monter ton niveau : plus d'unités sur le plateau et des cartes plus rares. « Relancer » change la boutique."],
+    ["#ar-side", "Or et combat", "Garde 10, 20, 30… or pour toucher des intérêts à chaque manche. Le bouton vert lance le combat sans attendre la fin du chrono."],
+    ["#ar-bench", "Le banc", "Tes unités achetées arrivent ici. Glisse-les sur le plateau. Trois cartes identiques fusionnent en ★★, puis en ★★★."],
+    ["#ar-board", "Le plateau", "Ton camp est en bas. Quand tu portes une unité, les cases conseillées s'allument. Les Colosses devant, les Tireurs et les Mages au fond."],
+    ["#ar-traits", "Les synergies", "Réunis des unités du même univers ou de la même classe pour activer des bonus. Touche une synergie pour voir ses paliers."],
+    ["#ar-items", "Les objets", "Les monstres et les boss donnent des composants. Glisse-en un sur une unité, ou un composant sur un autre pour les fusionner. L'aimant 🧲 les récupère."],
+    ["#ar-players", "Les autres joueurs", "Touche un joueur pour observer son équipe. Pendant les combats, touche-le pour regarder son combat. Le dernier en vie gagne !"],
+  ];
+  function tuto() {
+    if (!root || !G) return; clearInterval(UI.timer); let i = 0; const ov = document.createElement("div"); ov.className = "ar-tuto"; ov.innerHTML = `<div class="ar-tring"></div><div class="ar-tbub"></div>`; root.appendChild(ov);
+    const show = () => { const st = TUTO[i], el = root.querySelector(st[0]); if (!el) return next(); const r = el.getBoundingClientRect(), ring = ov.firstChild, bub = ov.lastChild;
+      ring.style.cssText = `left:${r.left - 5}px;top:${r.top - 5}px;width:${r.width + 10}px;height:${r.height + 10}px`;
+      bub.innerHTML = `<b>${i + 1}/${TUTO.length} · ${st[1]}</b><p>${st[2]}</p><div><button class="ar-b" data-tskip>Passer</button><button class="ar-b go" data-tnext>${i === TUTO.length - 1 ? "C'est parti" : "Suivant"}</button></div>`;
+      const below = r.top < innerHeight / 2; bub.style.cssText = `left:${Math.max(8, Math.min(innerWidth - 328, r.left + r.width / 2 - 160))}px;${below ? `top:${Math.min(innerHeight - 190, r.bottom + 14)}px` : `bottom:${Math.min(innerHeight - 190, innerHeight - r.top + 14)}px`}`; };
+    const end = () => { ov.remove(); try { localStorage.setItem("wc-arena-tuto", "1"); } catch (_) {} if (G && G.phase === "plan") { startTimer(); } };
+    const next = () => { i++; if (i >= TUTO.length) return end(); show(); };
+    ov.onclick = e => { e.stopPropagation(); if (e.target.closest("[data-tskip]")) return end(); if (e.target.closest("[data-tnext]")) return next(); }; show();
   }
   /* ---------- glisser-déposer ---------- */
   const unitAt = el => { if (!el || !G || !el.closest) return null; const c = el.closest("[data-cell]"), b = el.closest("[data-bench]"); if (c) { const [r, k] = c.dataset.cell.split(",").map(Number); return G.me.board.find(u => u.r === r && u.c === k) || null; } if (b) return G.me.bench[+b.dataset.bench] || null; return null; };
@@ -955,6 +1061,9 @@
     if (a === "closeinfo") { UI.info = null; UI.sel = null; UI.selItem = null; return drawAll(); }
     if (a === "guide") return guide();
     if (a === "event") return evBanner();
+    if (a === "augs") { const m = document.createElement("div"); m.className = "ar-modal"; m.innerHTML = `<div class="ar-sheet"><h2>Tes améliorations</h2>${G.me.aug.map(k => `<p>${AUG[k][0]} <b>${AUG[k][1]}</b> : ${AUG[k][2]}</p>`).join("")}<button class="ar-b" data-x>Fermer</button></div>`; root.appendChild(m); m.onclick = e => { if (e.target === m || e.target.closest("[data-x]")) m.remove(); }; return; }
+    if (a === "tuto") { root.querySelectorAll(".ar-modal").forEach(m => m.remove()); if (G && G.phase === "plan") tuto(); else note("Le tutoriel se lance pendant la préparation d'une partie."); return; }
+    if (a === "resume") { const sv = loadSave(); if (sv && !sv.mp) { music("main"); restore(sv); startTimer(); } return; }
     if (a === "gift") { if (UI.info && UI.info.own) gift(UI.info.own); return; }
     if (a === "speed") { UI.speed = UI.speed === 1 ? 2 : UI.speed === 2 ? 4 : 1; $("#ar-speed").textContent = "×" + UI.speed; if (UI.loop) { stopLoop(); runLoop(); } return; }
     if (a === "ready") { if (G.phase === "plan") fight(); return; }
@@ -964,18 +1073,18 @@
     drawAll();
   }
   function traitPop(k) {
-    const cnt = traitsOf(G.me.board)[k] || 0, ti = tier(k, cnt), m = document.createElement("div"); m.className = "ar-modal";
+    const cnt = traitsOf(G.me.board, G.me.aug)[k] || 0, ti = tier(k, cnt), m = document.createElement("div"); m.className = "ar-modal";
     m.innerHTML = `<div class="ar-sheet"><h2>${TICO(k)} ${TNAME(k)} <small>${cnt} sur le plateau</small></h2>${TR[k].t.map((t, i) => `<p class="${i === ti ? "ar-on" : ""}"><b>${t}</b> : ${TR[k].d(TR[k].v[i])}</p>`).join("")}
       <p class="ar-hint">Unités : ${SET.filter(n => UN[n].o.includes(k) || UN[n].cl === k).map(n => `${esc(n)} (${UN[n].c})`).join(", ")}</p><button class="ar-b" data-x>Fermer</button></div>`;
     root.appendChild(m); m.onclick = e => { if (e.target === m || e.target.closest("[data-x]")) m.remove(); };
   }
-  function startTimer() { muPrep(G.info.boss ? "boss" + BOSS[G.info.boss].t : G.info.pve >= 0 ? null : "pvp"); clearInterval(UI.timer); UI.tleft = UI.ttot = G.ri < 3 ? 25 : 40; const tick = () => { if (!root || !G || G.phase !== "plan") return clearInterval(UI.timer); $("#ar-timer").textContent = "⏳ " + UI.tleft; $("#ar-tbar").style.width = UI.tleft / UI.ttot * 100 + "%"; if (UI.tleft <= 5 && UI.tleft > 0) sfx("tick"); if (UI.tleft-- <= 0) { clearInterval(UI.timer); fight(); } }; tick(); UI.timer = setInterval(tick, 1000); }
+  function startTimer() { saveGame(); if (G.msg) { note(G.msg); G.msg = null; } showChoice(); muPrep(G.info.boss ? "boss" + BOSS[G.info.boss].t : G.info.pve >= 0 ? null : "pvp"); clearInterval(UI.timer); UI.tleft = UI.ttot = G.ri < 3 ? 25 : 40; const tick = () => { if (!root || !G || G.phase !== "plan") return clearInterval(UI.timer); $("#ar-timer").textContent = "⏳ " + UI.tleft; $("#ar-tbar").style.width = UI.tleft / UI.ttot * 100 + "%"; if (UI.tleft <= 5 && UI.tleft > 0) sfx("tick"); if (UI.tleft-- <= 0) { clearInterval(UI.timer); fight(); } }; tick(); UI.timer = setInterval(tick, 1000); }
   /* ---------- combat affiché ---------- */
   // plateau incomplet : on complète avec le banc
   function fillBoard(p) {
-    while (p.board.length < p.lvl && p.bench.some(Boolean)) { const i = p.bench.findIndex(x => x && !p.board.some(b => b.n === x.n)); const j = i >= 0 ? i : p.bench.findIndex(Boolean); const x = p.bench[j]; p.bench[j] = null; let r = 0, c = 3, k = 0; while (p.board.some(b => b.r === r && b.c === c)) { k++; c = [3, 2, 4, 1, 5, 0, 6][k % 7]; r = Math.floor(k / 7); } x.r = r; x.c = c; p.board.push(x); }
+    while (p.board.length < cap(p) && p.bench.some(Boolean)) { const i = p.bench.findIndex(x => x && !p.board.some(b => b.n === x.n)); const j = i >= 0 ? i : p.bench.findIndex(Boolean); const x = p.bench[j]; p.bench[j] = null; let r = 0, c = 3, k = 0; while (p.board.some(b => b.r === r && b.c === c)) { k++; c = [3, 2, 4, 1, 5, 0, 6][k % 7]; r = Math.floor(k / 7); } x.r = r; x.c = c; p.board.push(x); }
   }
-  function fight() { if (!G || G.phase !== "plan") return; if (G.mp) return mpReady(); startFight(); }
+  function fight() { if (!G || G.phase !== "plan") return; if (root.querySelector(".ar-tuto")) return; autoChoose(); if (G.mp) return mpReady(); startFight(); }
   function startFight() {
     clearInterval(UI.timer); if (G.phase !== "plan") return; dragEnd(); sfx("go"); if (G.me.alive) fillBoard(G.me);
     G.phase = "fight"; UI.sel = null; UI.info = null; UI.selItem = null;
@@ -997,7 +1106,7 @@
   // si je suis le camp du haut dans la simulation, on retourne l'affichage pour que mon équipe reste en bas
   const VP = (R, C) => UI.flip ? hexPos(7 - R, 6 - C) : hexPos(R, C), VS = sd => UI.flip ? 1 - sd : sd;
   function addTok(u) { const el = document.createElement("div"); el.className = `ar-u side${VS(u.side)} c${u.cost} ${u.mon ? "mon" : ""} ${u.boss ? "boss" : ""}`; el.dataset.uid = u.uid; el.style.cssText = VP(u.R, u.C);
-    el.innerHTML = `<div class="ar-bars"><i class="hp"></i><i class="mp"></i></div>${tokenHTML(u.mon ? u.art : u.n, u.star, u.cost, "", u.items)}`; $("#ar-live").appendChild(el); UI.tok[u.uid] = el; }
+    el.innerHTML = `<div class="ar-bars"><i class="hp"></i><i class="mp"></i></div>${tokenHTML(u.mon ? u.art : u.n, u.star, u.cost, UI.view && !u.mon && (u.side === 0 ? UI.view.a : UI.view.b) === G.me ? "mine" : "", u.items)}`; $("#ar-live").appendChild(el); UI.tok[u.uid] = el; }
   function runLoop() { UI.loop = setInterval(tickFight, 100 / UI.speed); }
   function stopLoop() { clearInterval(UI.loop); UI.loop = null; }
   function fx(cls, R, C, txt, ms) { const el = document.createElement("div"); el.className = "ar-fx " + cls; el.style.cssText = VP(R, C); if (txt != null) el.textContent = txt; $("#ar-live").appendChild(el); setTimeout(() => el.remove(), ms || 700); return el; }
@@ -1006,7 +1115,7 @@
     const ended = roundTick(); G.fights.forEach(f => { if (f === UI.view) showEvents(f.S); f.S.ev.length = 0; });
     for (const f of ended) { const S = f.S; { f.done = true; const g0 = G.me.gold; resolveFight(f, S);
         if (f === UI.fight) { G.hist[G.ri] = f.res.w ? 1 : 0; sfx(f.res.w ? "win" : "lose"); const b = $("#ar-banner"); b.hidden = false; b.className = "ar-banner " + (f.res.w ? "win" : "lose");
-          b.innerHTML = (f.res.w ? `Victoire !<small>+${G.me.gold - g0} 🪙</small>` : `Défaite<small>−${f.res.d} PV</small>`) + (f.res.it && f.res.it.length ? `<small class="ar-loot">Butin : ${f.res.it.map(id => ITEM[id].ic).join(" ")}</small>` : "") + (G.fights.some(x => !x.done) ? `<em>Les autres combats continuent : touche un joueur pour regarder.</em>` : "");
+          b.innerHTML = (f.res.w ? `Victoire !<small>+${G.me.gold - g0} 🪙</small>` : `Défaite<small>−${f.res.d} PV</small>`) + (f.res.it && f.res.it.length || f.res.pick ? `<small class="ar-loot">Butin : ${(f.res.it || []).map(id => ITEM[id].ic).join(" ")}${f.res.pick ? " + 1 au choix 🎁" : ""}</small>` : "") + (G.fights.some(x => !x.done) ? `<em>Les autres combats continuent : touche un joueur pour regarder.</em>` : "");
           setTimeout(() => { if (root) $("#ar-banner").hidden = true; }, 2200); drawTop(); drawShop(); drawItems();
           if (G.duo) { const mate = G.players.find(q => q.team === G.me.team && q !== G.me), pf = mate && G.fights.find(x => x !== f && !x.done && (x.a === mate || x.b === mate)); if (pf) { if (f.res.w) note("🤝 Tes survivants partent en renfort chez " + mate.name + " !"); setTimeout(() => { if (root && G && G.fights && !pf.done && UI.view === f) watch(pf); }, 1300); } } }
         drawPlayers(); } }
@@ -1043,10 +1152,11 @@
   }
   const fmt = n => Math.round(n).toLocaleString("fr-FR");
   function over() {
-    let pl = G.me.place; if (pl === 1) return cine(); if (G.duo) pl = Math.ceil(pl / 2);
+    logGame(); let pl = G.me.place; if (pl === 1) return cine(); if (G.duo) pl = Math.ceil(pl / 2);
     music(null); sfx("lose"); const m = document.createElement("div"); m.className = "ar-modal"; const L = G.lastBoard || [];
     m.innerHTML = `<div class="ar-sheet ar-over"><h2>${pl <= 4 || G.duo ? (pl === 2 ? "🥈 " : pl === 3 ? "🥉 " : "") + pl + "e place" : pl + "e place"}</h2><p>${G.duo ? `Ton équipe termine ${pl}e sur 4` : `Tu termines ${pl}e sur ${G.n}`}, à la manche ${G.info.st}-${G.info.k}. ${G.stat.wins} combat${G.stat.wins > 1 ? "s" : ""} gagné${G.stat.wins > 1 ? "s" : ""} sur ${G.stat.fights}.</p>
       ${L.length ? `<div class="ar-ctab">${L.map(x => { const st = x.st || { d: 0, k: 0, h: 0, t: 0 }; return `<div class="ar-crow c${UN[x.n].c}"><div class="ar-cmini" style="${bg(x.n)}"></div><div class="ar-cn"><b>${esc(artOf(x.n).nm)}</b><small>${stars(x.star)}</small></div><span>⚔️ ${fmt(st.d)}</span><span>💀 ${st.k}</span><span>💚 ${fmt(st.h)}</span><span>🛡️ ${fmt(st.t)}</span></div>`; }).join("")}</div>` : ""}
+      <p class="ar-rew" id="ar-rew"></p>
       <div class="ar-row"><button class="ar-b go" data-act="again">Rejouer</button><button class="ar-b" data-act="quit">Quitter</button></div></div>`;
     root.appendChild(m);
   }
@@ -1070,13 +1180,14 @@
   }
   function cineEnd() {
     clearTimeout(UI.cine); const c = root && root.querySelector("#ar-cine"); if (!c) return; const L = cineUnits().reverse(), tot = L.reduce((a, u) => ({ d: a.d + u.st.d, k: a.k + u.st.k, h: a.h + u.st.h }), { d: 0, k: 0, h: 0 });
-    const cnt = traitsOf(G.me.board), act = Object.keys(cnt).filter(k => tier(k, cnt[k]) >= 0);
+    const cnt = traitsOf(G.me.board, G.me.aug), act = Object.keys(cnt).filter(k => tier(k, cnt[k]) >= 0);
     c.querySelector(".ar-cskip").remove();
     c.querySelector("#ar-cstage").innerHTML = `<div class="ar-cend"><h1>🏆 Victoire !</h1>
       <p class="ar-ctot">❤️ ${Math.max(0, G.me.hp)} PV restants · niveau ${G.me.lvl} · ${G.stat.wins}/${G.stat.fights} combats gagnés<br>⚔️ ${fmt(tot.d)} dégâts · 💀 ${tot.k} éliminations · 💚 ${fmt(tot.h)} soins</p>
       ${act.length ? `<p class="ar-ctr">${act.map(k => `${TICO(k)} ${TNAME(k)} ${cnt[k]}`).join(" · ")}</p>` : ""}
       <div class="ar-ctab">${L.map(({ x, st }, i) => `<div class="ar-crow c${UN[x.n].c} ${i ? "" : "mvp"}"><div class="ar-cmini" style="${bg(x.n)}"></div><div class="ar-cn"><b>${esc(artOf(x.n).nm)}</b><small>${stars(x.star)}${i ? "" : " · MVP"}</small></div><span>⚔️ ${fmt(st.d)}</span><span>💀 ${st.k}</span><span>💚 ${fmt(st.h)}</span><span>🛡️ ${fmt(st.t)}</span></div>`).join("")}</div>
+      <p class="ar-rew" id="ar-rew">${G.rewTxt || ""}</p>
       <div class="ar-row"><button class="ar-b go" data-act="again">Rejouer</button><button class="ar-b" data-act="quit">Quitter</button></div></div>`;
   }
-  W.WikiArena = { open, close, _t: { SETS, playRound, roundTick, EVENTS, MP, mpGo, packBoard, UN, get SET() { return SET; }, TR, newGame, simRun, simInit, step, teamOf, buy, sell, merge, botTurn, prepareFights, resolveFight, resolveOthers, roundEnd, watch, roundInfo, pveTeam, TRK, BOSS, ITEM, FUS, COMP, equip, giveItems, cine, get G() { return G; } } };
+  W.WikiArena = { open, close, _t: { AUG, choose, cap, SETS, playRound, roundTick, EVENTS, MP, mpGo, packBoard, UN, get SET() { return SET; }, TR, newGame, simRun, simInit, step, teamOf, buy, sell, merge, botTurn, prepareFights, resolveFight, resolveOthers, roundEnd, watch, roundInfo, pveTeam, TRK, BOSS, ITEM, FUS, COMP, equip, giveItems, cine, get G() { return G; } } };
 })();

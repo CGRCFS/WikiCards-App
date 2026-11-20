@@ -465,3 +465,28 @@ body.ar-open{overflow:hidden}
 @media (max-width:900px){.ar-info{max-height:46vh}.ar-info .ar-ipic{width:54px}.ar-left .ar-info .ar-ibtn{order:0}}
 
 .ar-it.over{box-shadow:0 0 0 3px #8dffb5,0 0 12px #8dffb5;transform:scale(1.12)}
+
+/* ----- choix, améliorations, cadres, classement, tutoriel ----- */
+.ar-chsheet{max-width:760px;text-align:center}
+.ar-chrow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px}
+.ar-chopt{display:flex;flex-direction:column;align-items:center;gap:5px;background:#0e2730;border:2px solid #c9a24a;border-radius:14px;padding:14px 10px;transition:transform .1s,box-shadow .15s}
+.ar-chopt:hover{transform:translateY(-4px);box-shadow:0 0 18px #ffd24d88}
+.ar-chopt i{font-style:normal;font-size:44px;line-height:1}.ar-chopt b{font-size:15px;color:#f3e3b0}.ar-chopt span{font-size:12.5px}
+.ar-chopt small{font-size:11px;opacity:.8}.ar-chopt em{font-style:normal;font-size:11px;color:#b6f3c5}
+.ar-chopt.aug{border-color:#b44cf0;background:linear-gradient(#2a1740,#0e2730)}
+.ar-evc.aug{background:#2a1740;border-color:#b44cf0;font-size:14px!important;letter-spacing:2px}
+.ownL .ar-hex{box-shadow:inset 0 0 0 2px #ffd24d}.ownL::before{background:linear-gradient(135deg,#fff3b0,#f5b301,#fff3b0)!important}
+.ownM::before{background:linear-gradient(135deg,#ff9cf5,#b44cf0,#7df9ff)!important}
+.ownS::before{background:linear-gradient(135deg,#7df9ff,#fff,#ff9cf5,#ffd24d,#7df9ff)!important;background-size:300% 300%!important;animation:arshiny 3s linear infinite}
+@keyframes arshiny{to{background-position:300% 0}}
+.ownL,.ownM,.ownS{filter:drop-shadow(0 0 5px #ffe9a0aa) drop-shadow(0 5px 4px #0009)}
+.ar-rew{font-weight:800;color:#ffd24d;font-size:16px;min-height:20px}
+.ar-tbl{display:grid;grid-template-columns:1fr auto auto auto;gap:4px 14px;font-size:13.5px}.ar-tbl b{color:#c9a24a;font-size:11.5px;text-transform:uppercase}.ar-tbl span:nth-child(4n+1){font-weight:600}
+.ar-tbl.t4{max-height:46vh;overflow:auto}
+.ar-lrow .ar-plm{flex:none}
+.ar-resume{border-color:#52c462}
+.ar-tuto{position:fixed;inset:0;z-index:9300;background:#0000}
+.ar-tring{position:fixed;border:3px solid #ffd24d;border-radius:12px;box-shadow:0 0 0 9999px #000a,0 0 18px #ffd24d;pointer-events:none;transition:all .25s}
+.ar-tbub{position:fixed;width:320px;max-width:calc(100vw - 16px);background:#151b30;border:2px solid #ffd24d;border-radius:14px;padding:12px 14px;z-index:1}
+.ar-tbub b{color:#ffd24d}.ar-tbub p{margin:6px 0 10px;font-size:13.5px}.ar-tbub div{display:flex;justify-content:space-between;gap:8px}
+@media (max-width:640px){.ar-chrow{grid-template-columns:1fr}.ar-chopt{flex-direction:row;flex-wrap:wrap;text-align:left;padding:10px;justify-content:flex-start}.ar-chopt i{font-size:32px}.ar-chopt span,.ar-chopt small,.ar-chopt em{width:100%}}
