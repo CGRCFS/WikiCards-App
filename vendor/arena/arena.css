@@ -419,3 +419,6 @@ body.ar-open{overflow:hidden}
 .ar-evc{margin-left:8px;background:#3a2c05;border:1px solid #c9a24a;border-radius:99px;padding:3px 10px;font-size:12.5px;white-space:nowrap}
 @media (max-width:900px){.ar-evc{font-size:0;padding:3px 6px}.ar-evc::first-letter{font-size:14px}}
 .ar-toast{position:absolute;left:50%;top:64px;transform:translateX(-50%);z-index:9200;background:#06161cf2;border:1px solid #c9a24a;border-radius:12px;padding:8px 16px;font-weight:600;max-width:90%;text-align:center;box-shadow:0 6px 18px #000a;animation:arfade .2s;pointer-events:none}
+
+.ar-tm{display:inline-block;font-style:normal;font-size:10px;font-weight:800;width:15px;height:15px;line-height:15px;text-align:center;border-radius:4px;margin-right:4px;color:#000;vertical-align:1px}
+.ar-tm.t0{background:#4c8dff}.ar-tm.t1{background:#f87171}.ar-tm.t2{background:#4ade80}.ar-tm.t3{background:#ffd24d}

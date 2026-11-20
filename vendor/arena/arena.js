@@ -376,10 +376,10 @@
   function newGame(diff, seed, o) {
     o = o || {}; seed = seed || (Date.now() & 0x7fffffff); const rng = rng32(seed), names = BOTN.slice().sort(() => rng() - .5), AV = ["👑", "🦊", "🐸", "🐼", "🐙", "🦉", "🐷", "🐯", "🦄"];
     EVT = o.event && EVENTS[o.event] ? o.event : null;
-    G = { diff, seed, rng, event: EVT, stat: { fights: 0, wins: 0 }, ri: 0, phase: "plan", players: [], pool: {}, out: 0, log: [], hist: {}, mp: !!o.humans };
+    G = { duo: !!o.duo, teams: [0, 1, 2, 3].map(() => ({ hp: 100 })), diff, seed, rng, event: EVT, stat: { fights: 0, wins: 0 }, ri: 0, phase: "plan", players: [], pool: {}, out: 0, log: [], hist: {}, mp: !!o.humans };
     const H = o.humans || [{ name: "Toi" }]; H.forEach((h, i) => { const p = newPlayer(i, h.name, false); p.uid = h.uid || null; p.av = AV[i]; G.players.push(p); });
-    if (!o.humans || o.bots !== false) for (let i = H.length; i < 8; i++) { const p = newPlayer(i, names[i - 1], true); p.av = AV[i] || "🤖"; G.players.push(p); }
-    G.n = G.players.length; SET.forEach(n => G.pool[n] = Math.ceil(POOLN[UN[n].c - 1] / (EVT === "penurie" ? 2 : 1)));
+    if (!o.humans || o.bots !== false || o.duo) for (let i = H.length; i < 8; i++) { const p = newPlayer(i, names[i - 1], true); p.av = AV[i] || "🤖"; G.players.push(p); }
+    G.players.forEach(p => { p.team = G.duo ? Math.floor(p.id / 2) : p.id; }); G.n = G.players.length; SET.forEach(n => G.pool[n] = Math.ceil(POOLN[UN[n].c - 1] / (EVT === "penurie" ? 2 : 1)));
     G.me = G.players[o.me || 0]; G.me.av = "👑";
     { const pick = t => Object.keys(BOSS).filter(k => BOSS[k].t === t).sort(() => rng() - .5); const m = pick(2); G.boss = { 2: pick(1)[0], 3: m[0], 4: m[1], 5: pick(3)[0] }; }
     // chacun commence avec une unité à 1 or offerte
@@ -466,6 +466,10 @@
   function prepareFights() {
     const inf = G.info, alive = G.players.filter(p => p.alive), R = rng32((G.seed ^ Math.imul(G.ri + 1, 2654435761)) | 0), seed = () => Math.floor(R() * 1e9); G.fights = [];
     if (inf.pve >= 0) alive.forEach(p => G.fights.push({ a: p, b: null, B: pveTeam(inf), seed: seed() }));
+    else if (G.duo) { const T = [...new Set(alive.map(p => p.team))]; for (let i = T.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)), t = T[i]; T[i] = T[j]; T[j] = t; }
+      const mem = t => alive.filter(p => p.team === t), vs = (X, Y, ghost) => { const fl = R() < .5; X.forEach((a, i) => { const b = Y.length ? Y[(i + (fl ? 1 : 0)) % Y.length] : null; if (!b) return; G.fights.push(ghost ? { a, b: null, ghost: b, B: teamOf(b), seed: seed() } : { a, b, B: teamOf(b), seed: seed() }); }); };
+      while (T.length >= 2) { const X = mem(T.pop()), Y = mem(T.pop()); if (X.length < Y.length) { vs(Y, X); } else if (X.length > Y.length) { vs(X.slice(0, Y.length), Y); vs(X.slice(Y.length), Y, true); } else vs(X, Y); }
+      if (T.length) { const o = [...new Set(alive.filter(p => p.team !== T[0]).map(p => p.team))]; vs(mem(T[0]), mem(o[Math.floor(R() * o.length)]), true); } }
     else { const L = alive.slice(); for (let i = L.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)), t = L[i]; L[i] = L[j]; L[j] = t; } while (L.length >= 2) { const a = L.pop(), b = L.pop(); G.fights.push({ a, b, B: teamOf(b), seed: seed() }); }
       if (L.length) { const a = L[0], o = alive.filter(p => p !== a), g = o[Math.floor(R() * o.length)]; G.fights.push({ a, b: null, ghost: g, B: teamOf(g), seed: seed() }); } }
     G.fights.forEach(f => { if (f.b && f.a.id > f.b.id) { const t = f.a; f.a = f.b; f.b = t; } if (f.b) f.B = teamOf(f.b); f.A = teamOf(f.a); });
@@ -475,7 +479,7 @@
     const my = f.a === G.me ? 0 : f.b === G.me ? 1 : -1;
     if (my >= 0) { S.units.forEach(u => { if (u.side === my && u.ref) { const st = u.ref.st = u.ref.st || { d: 0, k: 0, h: 0, t: 0, f: 0 }; st.d += u.dealt; st.k += u.kills; st.h += u.healed; st.t += u.taken; st.f++; } }); G.stat.fights++; if (S.win === my) G.stat.wins++; }
     const inf = G.info;
-    const lose = (p, n) => { let d = STAGEDMG[Math.min(inf.st, STAGEDMG.length - 1)] + n * (inf.pve >= 0 ? 1 : 2); if (EVT === "toutourien") d *= 2; p.hp -= d; p.streak = p.streak < 0 ? p.streak - 1 : -1; return d; };
+    const lose = (p, n) => { let d = STAGEDMG[Math.min(inf.st, STAGEDMG.length - 1)] + n * (inf.pve >= 0 ? 1 : 2); if (EVT === "toutourien") d *= 2; if (G.duo) { d = Math.max(1, Math.round(d * .6)); const T = G.teams[p.team]; T.hp -= d; G.players.forEach(q => { if (q.team === p.team) q.hp = T.hp; }); } else p.hp -= d; p.streak = p.streak < 0 ? p.streak - 1 : -1; return d; };
     const win = (p, side) => { p.streak = inf.pve >= 0 ? p.streak : p.streak > 0 ? p.streak + 1 : 1; p.gold += (inf.pve >= 0 ? 0 : 1 + (EVT === "toutourien" ? 3 : 0)) + S.goldWin[side]; };
     f.a.gold += S.gold[0]; if (f.b) f.b.gold += S.gold[1];
     let ra, rb = null;
@@ -492,12 +496,28 @@
     dead.forEach(p => { p.alive = false; p.place = G.n - G.out; G.out++; owned(p).forEach(x => G.pool[x.n] += Math.pow(3, x.star - 1)); p.board = []; p.bench = Array(9).fill(null); });
     const alive = G.players.filter(p => p.alive);
     if (!G.me.alive) { G.phase = "over"; return; }
-    if (alive.length === 1) { G.me.place = 1; G.phase = "over"; return; }
-    if (G.mp && !alive.some(p => !p.bot && p !== G.me) && !G.players.some(p => p.bot)) { G.me.place = 1; G.phase = "over"; return; }
+    if (alive.every(p => p.team === G.me.team)) { G.me.place = 1; G.phase = "over"; return; }
+    if (G.mp && !G.duo && !alive.some(p => !p.bot && p !== G.me) && !G.players.some(p => p.bot)) { G.me.place = 1; G.phase = "over"; return; }
     G.ri++; roundStart();
   }
   // joue le reste de la manche sans affichage (les combats des bots)
-  function resolveOthers(mine) { G.fights.forEach(f => { if (f === mine) return; const S = simRun(f.A, f.B, f.seed); resolveFight(f, S); }); }
+  function roundTick() {
+    const ended = []; for (const f of G.fights) { if (f.S.over) continue; step(f.S); if (f.S.over) ended.push(f); }
+    for (const f of G.fights) if (f.rein && !f.S.over && f.S.t >= f.rein.t) { reinforce(f, f.rein); f.rein = null; }
+    if (G.duo) for (const f of ended) { const w = f.S.win, pw = w === 0 ? f.a : w === 1 ? f.b : null; if (!pw) continue;
+      const mate = G.players.find(q => q.team === pw.team && q !== pw && q.alive), pf = mate && G.fights.find(x => x !== f && (x.a === mate || x.b === mate));
+      if (pf && !pf.S.over) pf.rein = { t: pf.S.t + 1.5, side: pf.a === mate ? 0 : 1, from: pw, units: f.S.units.filter(u => u.alive && u.side === w && !u.sum && !u.mon).map(u => ({ n: u.n, star: u.star, it: u.items, k: u.hp / u.maxhp })) }; }
+    return ended;
+  }
+  // duo : les survivants du vainqueur rejoignent le combat de son coéquipier
+  function reinforce(f, r) {
+    const S = f.S; r.units.forEach((x, i) => { const fr = freeNear(S, r.side ? 0 : 7, [3, 2, 4, 1, 5, 0, 6][i % 7]); if (!fr) return; const u = mkUnit(S, r.side, { n: x.n, star: x.star, it: x.it, r: 0, c: 0 });
+      u.R = fr[0]; u.C = fr[1]; u.hp = u.maxhp * Math.max(.1, x.k); u.rein = 1; u.sum = 1; u.waitT = S.t + .3; S.grid[fr[0] + "," + fr[1]] = u; S.units.push(u); S.ev.push({ k: "spawn", u: u.uid }); });
+    S.ev.push({ k: "rein", side: r.side, n: r.from.name });
+  }
+  // joue toute la manche sans affichage
+  function playRound() { let n = 0; while (G.fights.some(f => !f.S.over) && n++ < 1200) { roundTick().forEach(f => resolveFight(f, f.S)); G.fights.forEach(f => f.S.ev.length = 0); } }
+  function resolveOthers() { G.fights.forEach(f => { f.S = simInit(f.A, f.B, f.seed); }); playRound(); }
 
   /* ---------- musique (lecteurs YouTube cachés) ---------- */
   const TRK = { main: "LmWsog9oHI8", pvp: ["Fx6NAT_jgTg", "GM5LWGlNd4M", "OwMAKI8HQc4", "zVEI77M8qyU"], boss1: "oZZY7Ll4ZzE", boss2: "kzN6u-n5BT4", boss3: "hA83EHtcAGM", win: "L9Hy3WFlcLQ" };
@@ -564,7 +584,7 @@
   function sfVol(v) { SF.vol = v; try { localStorage.setItem("wc-arena-sfx", v); } catch (_) {} }
 
   /* ---------- multijoueur : le salon synchronise les plateaux, chaque appareil rejoue les mêmes combats ---------- */
-  const MP = { snap: null, room: null, st: null, poll: null, host: false, gid: null, sent: -1, tick: 0 };
+  const MP = { gifts: [], snap: null, room: null, st: null, poll: null, host: false, gid: null, sent: -1, tick: 0 };
   const rpc = async (fn, args) => { const r = await API.rpc(fn, args); if (r.error) throw new Error(r.error.message || "Erreur"); return r.data; };
   const packBoard = p => p.board.map(x => ({ n: x.n, s: x.star, r: x.r, c: x.c, it: x.it || [] }));
   const unpack = b => (b || []).filter(x => UN[x.n]).map(x => ({ n: x.n, star: x.s || 1, r: x.r, c: x.c, it: (x.it || []).filter(id => ITEM[id]) }));
@@ -591,7 +611,7 @@
   function mpRoom() { MP.sig = null; MP.gid = null; root.innerHTML = `<div class="ar-menu"><h1>⚔️ Salon</h1><div id="ar-room"><p>Connexion…</p></div></div>`;
     root.onclick = async e => { const a = e.target.closest("[data-act]"); if (!a) return;
       try { if (a.dataset.act === "mpquit") { await mpLeave(); return menu(); }
-        if (a.dataset.act === "mpstart") { const v = k => (root.querySelector("#ar-" + k) || {}).value; await rpc("ar_start", { p_room: MP.room, p_cfg: { seed: Math.floor(Math.random() * 2e9), diff: v("mpdiff") || "normal", event: pickEvent(v("mpev")), bots: v("mpbots") !== "non" } }); mpTick(); }
+        if (a.dataset.act === "mpstart") { const v = k => (root.querySelector("#ar-" + k) || {}).value; await rpc("ar_start", { p_room: MP.room, p_cfg: { seed: Math.floor(Math.random() * 2e9), diff: v("mpdiff") || "normal", event: pickEvent(v("mpev")), bots: v("mpbots") !== "non", duo: v("mpmode") === "duo" } }); mpTick(); }
       } catch (err) { note(err.message); } };
     mpStop(); MP.poll = setInterval(mpTick, 1500); mpTick(); }
   async function mpTick() {
@@ -603,12 +623,12 @@
     if (d.status !== "jeu") { if (G && G.mp && G.phase !== "over") { note("La partie a été arrêtée."); stopLoop(); clearInterval(UI.timer); G = null; mpRoom(); return; } if (G) return;
       const sig = JSON.stringify([d.players, d.host]); if (sig === MP.sig) return; MP.sig = sig; const b = root.querySelector("#ar-room"); if (!b) return;
       b.innerHTML = `<div class="ar-box"><h3>Joueurs (${d.players.length}/8)</h3>${d.players.map(p => `<div class="ar-lrow"><b>${esc(API.name(p.u))}${p.u === d.host ? " 👑" : ""}</b><span>${p.on ? "connecté" : "absent"}</span></div>`).join("")}</div>
-        ${MP.host ? `<div class="ar-box"><h3>Réglages</h3><label class="ar-opt">Bots sur les places libres <select id="ar-mpbots"><option value="oui">Oui</option><option value="non">Non</option></select></label><label class="ar-opt">Difficulté des bots <select id="ar-mpdiff"><option value="facile">Facile</option><option value="normal" selected>Normal</option><option value="difficile">Difficile</option></select></label><label class="ar-opt">Événement <select id="ar-mpev">${evOpts("hasard")}</select></label></div>
+        ${MP.host ? `<div class="ar-box"><h3>Réglages</h3><label class="ar-opt">Mode <select id="ar-mpmode"><option value="solo">Chacun pour soi</option><option value="duo">Duo (équipes de 2 dans l'ordre de la liste)</option></select></label><p class="ar-hint">En duo : le 1er et le 2e joueur font équipe, le 3e et le 4e, etc. Un joueur seul reçoit un bot comme coéquipier, et les places libres sont toujours tenues par des bots.</p><label class="ar-opt">Bots sur les places libres <select id="ar-mpbots"><option value="oui">Oui</option><option value="non">Non</option></select></label><label class="ar-opt">Difficulté des bots <select id="ar-mpdiff"><option value="facile">Facile</option><option value="normal" selected>Normal</option><option value="difficile">Difficile</option></select></label><label class="ar-opt">Événement <select id="ar-mpev">${evOpts("hasard")}</select></label></div>
         <div class="ar-row"><button class="ar-b big go" data-act="mpstart">Lancer la partie</button><button class="ar-b" data-act="mpquit">Fermer le salon</button></div>` : `<p>En attente de l'hôte…</p><div class="ar-row"><button class="ar-b" data-act="mpquit">Quitter le salon</button></div>`}`; }
   }
   function mpBegin(s) {
     MP.gid = s.gid; MP.sent = -1; const c = s.cfg || {}, order = s.order || [], me = order.indexOf(API.uid);
-    music("main"); newGame(c.diff || "normal", (c.seed | 0) || 1, { event: c.event, humans: order.map(u => ({ uid: u, name: u === API.uid ? "Toi" : API.name(u) })), me, bots: c.bots !== false });
+    music("main"); newGame(c.diff || "normal", (c.seed | 0) || 1, { event: c.event, humans: order.map(u => ({ uid: u, name: u === API.uid ? "Toi" : API.name(u) })), me, bots: c.bots !== false, duo: !!c.duo }); MP.gifts = [];
     UI.speed = 1; build(); if (G.event) evBanner();
   }
   // « Prêt » : j'envoie mon plateau (l'hôte envoie aussi ceux des bots et les PV de tout le monde)
@@ -616,6 +636,7 @@
     if (!G || G.phase !== "plan") return; clearInterval(UI.timer); dragEnd(); fillBoard(G.me); G.phase = "wait"; UI.sel = null; UI.info = null; UI.selItem = null; drawAll(); $("#ar-timer").textContent = "en attente des autres…";
     MP.snap = G.me.board.map(x => ({ n: x.n, star: x.star, r: x.r, c: x.c, ref: x, it: (x.it || []).slice() }));
     const d = G.me.alive ? { b: packBoard(G.me), lvl: G.me.lvl } : { dead: 1 };
+    if (MP.gifts.length) { d.gift = MP.gifts; MP.gifts = []; }
     if (MP.host) { d.bots = {}; G.players.forEach(p => { if (p.bot && p.alive) d.bots[p.id] = { b: packBoard(p), lvl: p.lvl }; }); d.hp = G.players.map(p => p.hp); }
     MP.sent = G.ri; try { await rpc("ar_submit", { p_room: MP.room, p_r: G.ri, p_data: d }); } catch (e) { note(e.message); MP.sent = -1; G.phase = "plan"; drawAll(); }
   }
@@ -627,6 +648,7 @@
   function mpGo(by) {
     let hostD = null; G.players.forEach(p => { if (p.bot || !p.uid) return; const d = by[p.uid]; if (d && MP.st && p.uid === MP.st.host) hostD = d; if (p === G.me || !d || d.afk || d.dead) return; p.board = unpack(d.b); p.lvl = d.lvl || p.lvl; });
     if (hostD && !MP.host) { G.players.forEach(p => { if (p.bot && hostD.bots && hostD.bots[p.id]) { p.board = unpack(hostD.bots[p.id].b); p.lvl = hostD.bots[p.id].lvl || p.lvl; } }); if (Array.isArray(hostD.hp)) hostD.hp.forEach((h, i) => { const p = G.players[i]; if (p && p.alive && typeof h === "number" && h > 0) p.hp = h; }); }
+    if (G.duo) { const m = mateOf(G.me), d = m && m.uid && by[m.uid]; if (d && d.gift) receive(d.gift); }
     G.phase = "plan"; startFight();
   }
   function evBanner() { const e = EVENTS[G.event], m = document.createElement("div"); m.className = "ar-modal"; m.innerHTML = `<div class="ar-sheet ar-over"><div style="font-size:60px">${e[0]}</div><h2>Événement : ${e[1]}</h2><p>${e[2]}</p><button class="ar-b go" data-x>C'est parti</button></div>`; root.appendChild(m); m.onclick = ev => { if (ev.target === m || ev.target.closest("[data-x]")) m.remove(); }; setTimeout(() => m.remove(), 6000); }
@@ -654,13 +676,14 @@
       <p>Recrute des cartes dans la boutique, place-les sur ton plateau et regarde-les se battre. Trois cartes identiques fusionnent en ★★, puis en ★★★. Réunis des cartes du même univers ou de la même classe pour activer des synergies. Dernier joueur en vie : victoire !</p>
       <div class="ar-box"><h3>Solo contre 7 bots</h3>
         <div class="ar-diff"><span>Difficulté :</span>${[["facile", "Facile"], ["normal", "Normal"], ["difficile", "Difficile"]].map(([k, l]) => `<button class="ar-b ${k === "normal" ? "on" : ""}" data-diff="${k}">${l}</button>`).join("")}</div>
+        <label class="ar-opt">Mode <select id="ar-mode"><option value="solo">Chacun pour soi</option><option value="duo">Duo : toi et un bot contre 3 équipes</option></select></label>
         <label class="ar-opt">Événement <select id="ar-ev">${evOpts("")}</select></label>
         <button class="ar-b big go" data-act="start">Jouer en solo</button></div>
       <div class="ar-box"><h3>Multijoueur</h3><p>Jusqu'à 8 joueurs ; les places libres peuvent être tenues par des bots.</p><button class="ar-b big" data-act="multi">Jouer avec des amis</button></div>
       <div class="ar-row"><button class="ar-b" data-act="help">Règles</button><button class="ar-b" data-act="quit">Quitter</button></div></div>`;
     root.onclick = e => { const d = e.target.closest("[data-diff]"); if (d) { root.querySelectorAll("[data-diff]").forEach(b => b.classList.toggle("on", b === d)); return; }
       const a = e.target.closest("[data-act]"); if (!a) return; if (a.dataset.act === "quit") return close(); if (a.dataset.act === "help") return help(); if (a.dataset.act === "multi") return mpLobby();
-      if (a.dataset.act === "start") { music("main"); newGame((root.querySelector("[data-diff].on") || {}).dataset.diff || "normal", 0, { event: pickEvent(root.querySelector("#ar-ev").value) }); build(); if (G.event) evBanner(); } };
+      if (a.dataset.act === "start") { music("main"); newGame((root.querySelector("[data-diff].on") || {}).dataset.diff || "normal", 0, { event: pickEvent(root.querySelector("#ar-ev").value), duo: root.querySelector("#ar-mode").value === "duo" }); build(); if (G.event) evBanner(); } };
   }
   function help() {
     const m = document.createElement("div"); m.className = "ar-modal"; m.innerHTML = `<div class="ar-sheet"><h2>Règles</h2>
@@ -672,6 +695,7 @@
       <p><b>Jouer :</b> touche une unité pour la sélectionner et voir sa fiche, puis touche une case de ton plateau ou du banc pour la déplacer. « Vendre » la rend contre de l'or.</p>
       <p><b>Objets :</b> les monstres et les boss donnent des composants. Deux composants sur la même unité fusionnent. Le bouton « 📖 Objets » montre toutes les fusions ; l'aimant 🧲 récupère les objets d'une unité.</p>
       <p><b>Boss :</b> la dernière manche de chaque acte (💀) est un boss : un facile, deux moyens puis un boss final, différents à chaque partie. Sa fiche s'affiche pendant la préparation.</p>
+      <p><b>Duo :</b> deux joueurs partagent les mêmes PV. Chacun mène son combat ; si tu gagnes le tien, tes survivants partent en renfort chez ton coéquipier. Tu peux aussi lui donner une unité par manche (bouton 🎁 sur sa fiche).</p>
       <p><b>Mort subite :</b> après 30 s de combat, les dégâts augmentent et les soins diminuent jusqu'à ce qu'un camp tombe.</p>
       <h3>Synergies</h3>${Object.keys(TR).map(k => `<p>${TICO(k)} <b>${TNAME(k)}</b> (${TR[k].t.join(" / ")}) : ${TR[k].t.map((t, i) => TR[k].d(TR[k].v[i])).slice(-1)[0].replace(/\d+(\.\d+)?/g, m => m)}</p>`).join("")}
       <button class="ar-b" data-x>Fermer</button></div>`;
@@ -708,6 +732,16 @@
   }
   function drawBench() { $("#ar-bench").innerHTML = G.me.bench.map((x, i) => `<div class="ar-slot ${x && UI.sel === x ? "sel" : ""}" data-bench="${i}">${x ? tokenHTML(x.n, x.star, UN[x.n].c, "", x.it) : ""}</div>`).join("") + `<span class="ar-cap">${G.me.board.length}/${G.me.lvl}</span>`; }
   function drawItems() { const p = G.me; $("#ar-items").innerHTML = `<button class="ar-it mag ${UI.selItem === "magnet" ? "sel" : ""}" data-item="magnet" title="Aimant">🧲</button>` + p.items.map((id, i) => `<button class="ar-it ${isComp(id) ? "comp" : "full"} ${UI.selItem === i ? "sel" : ""}" data-item="${i}">${ITEM[id].ic}</button>`).join("") + (p.items.length ? "" : `<span class="ar-hint">Tes objets arrivent ici : bats les monstres et les boss.</span>`) + `<button class="ar-b ar-guide" data-act="guide">📖 Objets</button>`; }
+  const mateOf = p => G.duo ? G.players.find(q => q.team === p.team && q !== p) : null;
+  // duo : donne une unité (avec ses objets) à son coéquipier, une fois par manche
+  function gift(x) {
+    const p = G.me, m = mateOf(p); if (!m || !m.alive || G.phase !== "plan") return; if (G.gifted === G.ri) { sfx("err"); return note("Un seul don par manche."); }
+    if (!G.mp && m.bench.indexOf(null) < 0) { sfx("err"); return note("Le banc de " + m.name + " est plein."); }
+    const bi = p.board.indexOf(x); if (bi >= 0) p.board.splice(bi, 1); else { const i = p.bench.indexOf(x); if (i < 0) return; p.bench[i] = null; } delete x.r; delete x.c; G.gifted = G.ri; UI.sel = null; UI.info = null;
+    if (G.mp) { MP.gifts.push({ n: x.n, s: x.star, it: x.it || [] }); } else { m.bench[m.bench.indexOf(null)] = x; merge(m); }
+    sfx("gold"); note(`🎁 ${artOf(x.n).nm} envoyé à ${m.name}.`); drawAll();
+  }
+  function receive(L) { const p = G.me; (L || []).forEach(g => { if (!UN[g.n]) return; const x = { n: g.n, star: g.s || 1, it: (g.it || []).filter(id => ITEM[id]) }; const i = p.bench.indexOf(null); if (i >= 0) { p.bench[i] = x; merge(p); note(`🎁 Tu reçois ${artOf(x.n).nm} !`); sfx("gold"); } else { p.gold += sellVal(x); p.items.push(...x.it); note(`🎁 Banc plein : ${artOf(x.n).nm} a été vendu.`); } }); }
   // utilise l'objet sélectionné (ou l'aimant) sur l'unité x
   function useItem(sel, x) {
     const p = G.me; UI.selItem = null; UI.info = null;
@@ -744,9 +778,9 @@
     $("#ar-shop").innerHTML = p.shop.map((n, i) => { if (!n) return `<div class="ar-card empty"></div>`; const d = UN[n], a = artOf(n), have = owned(p).filter(x => x.n === n && x.star === 1).length;
       return `<button class="ar-card c${d.c} ${have >= 2 ? "up" : have ? "pair" : ""}" data-buy="${i}" ${off || p.gold < d.c ? "disabled" : ""} style="${bg(n)}"><span class="ar-cost">${d.c} 🪙</span><span class="ar-tags">${[...d.o, d.cl].map(k => `<i>${TICO(k)} ${TNAME(k)}</i>`).join("")}</span><span class="ar-nm">${esc(a.nm)}</span><span class="ar-i" data-info="${esc(n)}">i</span>${have >= 2 ? `<span class="ar-up">★★ !</span>` : ""}</button>`; }).join("");
   }
-  function drawPlayers() { $("#ar-players").innerHTML = G.players.slice().sort((a, b) => b.alive - a.alive || b.hp - a.hp).map(p => { const L = p.board.slice().sort((a, b) => UN[b.n].c * b.star - UN[a.n].c * a.star).slice(0, 9);
+  function drawPlayers() { $("#ar-players").innerHTML = G.players.slice().sort((a, b) => b.alive - a.alive || b.hp - a.hp || a.team - b.team || a.id - b.id).map(p => { const L = p.board.slice().sort((a, b) => UN[b.n].c * b.star - UN[a.n].c * a.star).slice(0, 9);
     const f = G.phase === "fight" && G.fights && G.fights.find(x => x.a === p || x.b === p), vs = f ? (f.a === p ? (f.b ? f.b.name : f.ghost ? "fantôme" : G.info.boss ? "boss" : "monstres") : f.a.name) : "";
-    return `<div class="ar-pl ${p.alive ? "" : "dead"} ${p === G.me ? "me" : ""} ${f ? "can" : ""} ${f && !f.done ? "infight" : ""} ${f && f === UI.view ? "view" : ""}" ${f ? `data-pl="${p.id}"` : ""}><div class="ar-plh"><span class="ar-av">${p.av}</span><b>${esc(p.name)}</b><span>${p.alive ? "❤️ " + Math.max(0, p.hp) : "💀 " + p.place + "e"}</span></div>${p.alive ? `<div class="ar-pls"><small>Niv. ${p.lvl}${Math.abs(p.streak) >= 2 ? (p.streak > 0 ? " · 🔥 " + p.streak : " · 🧊 " + -p.streak) : ""}${f ? ` · <span class="ar-plv ${f.done ? "done" : ""}">${f.done ? "✔️ fini" : "⚔️ en combat"} · ${esc(vs)}${f === UI.view ? " 👁" : ""}</span>` : ""}</small><span class="ar-plm">${(EVT === "brouillard" && p !== G.me ? [] : L).map(x => `<i class="c${UN[x.n].c} s${x.star}" style="${bg(x.n)}"></i>`).join("")}</span></div>` : ""}<i class="ar-plb" style="width:${Math.max(0, p.hp)}%"></i></div>`; }).join(""); }
+    return `<div class="ar-pl ${p.alive ? "" : "dead"} ${p === G.me ? "me" : ""} ${f ? "can" : ""} ${f && !f.done ? "infight" : ""} ${f && f === UI.view ? "view" : ""}" ${f ? `data-pl="${p.id}"` : ""}><div class="ar-plh"><span class="ar-av">${p.av}</span><b>${G.duo ? `<span class="ar-tm t${p.team}">${p.team + 1}</span>` : ""}${esc(p.name)}${G.duo && p !== G.me && p.team === G.me.team ? " 🤝" : ""}</b><span>${p.alive ? "❤️ " + Math.max(0, p.hp) : "💀 " + p.place + "e"}</span></div>${p.alive ? `<div class="ar-pls"><small>Niv. ${p.lvl}${Math.abs(p.streak) >= 2 ? (p.streak > 0 ? " · 🔥 " + p.streak : " · 🧊 " + -p.streak) : ""}${f ? ` · <span class="ar-plv ${f.done ? "done" : ""}">${f.done ? "✔️ fini" : "⚔️ en combat"} · ${esc(vs)}${f === UI.view ? " 👁" : ""}</span>` : ""}</small><span class="ar-plm">${(EVT === "brouillard" && p !== G.me ? [] : L).map(x => `<i class="c${UN[x.n].c} s${x.star}" style="${bg(x.n)}"></i>`).join("")}</span></div>` : ""}<i class="ar-plb" style="width:${Math.max(0, p.hp)}%"></i></div>`; }).join(""); }
   function drawDmg() { const S = UI.sim, box = root && $("#ar-dmg"); if (!S || !box) return; const L = S.units.filter(u => u.side === (UI.flip ? 1 : 0) && !u.sum && !u.mon).sort((a, b) => b.dealt - a.dealt), mx = Math.max(1, ...L.map(u => u.dealt));
     box.innerHTML = L.map(u => `<div class="ar-dr"><i class="ar-dp c${u.cost}" style="${bg(u.n)}"></i><div><span>${esc(artOf(u.n).nm)}</span><b>${Math.round(u.dealt)}</b><em><u style="width:${u.dealt / mx * 100}%"></u></em></div></div>`).join(""); }
   function statLine(n, star) { const d = UN[n], b = CB[d.cl], st = STAR[star - 1]; return `PV <b>${Math.round(HPB[d.c - 1] * b.hp * st)}</b> · Dégâts <b>${Math.round(ADB[d.c - 1] * b.ad * st)}</b> · Vitesse <b>${b.as}</b> · Portée <b>${b.rg === 1 ? "mêlée" : b.rg + " cases"}</b> · Armure <b>${b.ar}</b> · Mana <b>${d.s.m || b.m}</b>`; }
@@ -759,7 +793,7 @@
     const d = UN[x.n], a = artOf(x.n);
     box.innerHTML = `<div class="ar-ipic c${d.c}" style="${bg(x.n)}"></div><div class="ar-itx"><h3>${esc(a.nm)} <small>${stars(x.star || 1)} · ${d.c}🪙</small></h3>
       <p class="ar-itr">${d.o.map(k => `${TICO(k)} ${TNAME(k)}`).join(" · ")} · ${TICO(d.cl)} ${TNAME(d.cl)}</p><p class="ar-ist">${statLine(x.n, x.star || 1)}</p>
-      <p><b>${esc(d.s.n)} :</b> ${esc(d.s.t)}</p><p class="ar-ipl">📍 <b>Placement :</b> ${PLACE[d.cl]}</p>${(x.its || x.own && x.own.it || []).map(id => `<p class="ar-iit">${ITEM[id].ic} <b>${ITEM[id].n}</b> : ${isComp(id) ? ITEM[id].d : ITEM[id].t}</p>`).join("")}</div><div class="ar-ibtn">${x.own && (G.phase === "plan" || !G.me.board.includes(x.own)) ? `<button class="ar-b" data-act="sell">Vendre <small>+${sellVal(x.own)}🪙</small></button>` : ""}<button class="ar-b mini" data-act="closeinfo">✕</button></div>`;
+      <p><b>${esc(d.s.n)} :</b> ${esc(d.s.t)}</p><p class="ar-ipl">📍 <b>Placement :</b> ${PLACE[d.cl]}</p>${(x.its || x.own && x.own.it || []).map(id => `<p class="ar-iit">${ITEM[id].ic} <b>${ITEM[id].n}</b> : ${isComp(id) ? ITEM[id].d : ITEM[id].t}</p>`).join("")}</div><div class="ar-ibtn">${x.own && G.duo && G.phase === "plan" && mateOf(G.me).alive ? `<button class="ar-b" data-act="gift">🎁 Donner à ${esc(mateOf(G.me).name)}</button>` : ""}${x.own && (G.phase === "plan" || !G.me.board.includes(x.own)) ? `<button class="ar-b" data-act="sell">Vendre <small>+${sellVal(x.own)}🪙</small></button>` : ""}<button class="ar-b mini" data-act="closeinfo">✕</button></div>`;
   }
   // dépose l'unité s sur une case du plateau, un emplacement du banc ou la zone de vente
   function dropOn(s, tg) {
@@ -834,6 +868,7 @@
     if (a === "closeinfo") { UI.info = null; UI.sel = null; UI.selItem = null; return drawAll(); }
     if (a === "guide") return guide();
     if (a === "event") return evBanner();
+    if (a === "gift") { if (UI.info && UI.info.own) gift(UI.info.own); return; }
     if (a === "speed") { UI.speed = UI.speed === 1 ? 2 : UI.speed === 2 ? 4 : 1; $("#ar-speed").textContent = "×" + UI.speed; if (UI.loop) { stopLoop(); runLoop(); } return; }
     if (a === "ready") { if (G.phase === "plan") fight(); return; }
     if (a === "sell" && G.phase !== "plan" && UI.info && UI.info.own && p.board.includes(UI.info.own)) return;
@@ -881,11 +916,12 @@
   function fx(cls, R, C, txt, ms) { const el = document.createElement("div"); el.className = "ar-fx " + cls; el.style.cssText = VP(R, C); if (txt != null) el.textContent = txt; $("#ar-live").appendChild(el); setTimeout(() => el.remove(), ms || 700); return el; }
   function tickFight() {
     if (!root || !G || !G.fights) return stopLoop();
-    for (const f of G.fights) { if (f.done) continue; const S = f.S; step(S); if (f === UI.view) showEvents(S); S.ev.length = 0;
-      if (S.over) { f.done = true; const g0 = G.me.gold; resolveFight(f, S);
+    const ended = roundTick(); G.fights.forEach(f => { if (f === UI.view) showEvents(f.S); f.S.ev.length = 0; });
+    for (const f of ended) { const S = f.S; { f.done = true; const g0 = G.me.gold; resolveFight(f, S);
         if (f === UI.fight) { G.hist[G.ri] = f.res.w ? 1 : 0; sfx(f.res.w ? "win" : "lose"); const b = $("#ar-banner"); b.hidden = false; b.className = "ar-banner " + (f.res.w ? "win" : "lose");
           b.innerHTML = (f.res.w ? `Victoire !<small>+${G.me.gold - g0} 🪙</small>` : `Défaite<small>−${f.res.d} PV</small>`) + (f.res.it && f.res.it.length ? `<small class="ar-loot">Butin : ${f.res.it.map(id => ITEM[id].ic).join(" ")}</small>` : "") + (G.fights.some(x => !x.done) ? `<em>Les autres combats continuent : touche un joueur pour regarder.</em>` : "");
-          setTimeout(() => { if (root) $("#ar-banner").hidden = true; }, 2200); drawTop(); drawShop(); drawItems(); }
+          setTimeout(() => { if (root) $("#ar-banner").hidden = true; }, 2200); drawTop(); drawShop(); drawItems();
+          if (G.duo) { const mate = G.players.find(q => q.team === G.me.team && q !== G.me), pf = mate && G.fights.find(x => x !== f && !x.done && (x.a === mate || x.b === mate)); if (pf) { if (f.res.w) note("🤝 Tes survivants partent en renfort chez " + mate.name + " !"); setTimeout(() => { if (root && G && G.fights && !pf.done && UI.view === f) watch(pf); }, 1300); } } }
         drawPlayers(); } }
     const S = UI.sim; if (S) { if (Math.round(S.t * 10) % 5 === 0) drawDmg();
       for (const u of S.units) { const el = UI.tok[u.uid]; if (!el || !u.alive) continue; { const R = UI.flip ? 7 - u.R : u.R, C = UI.flip ? 6 - u.C : u.C; el.style.left = ((C + (R & 1) * .5) / 7.5 * 100) + "%"; el.style.top = (R * .75 / 6.25 * 100) + "%"; }
@@ -904,6 +940,7 @@
       else if (e.k === "cast" && u) { fx("cast", u.R, u.C, e.n, 1100); if (el) { el.classList.add("casting"); setTimeout(() => el.classList.remove("casting"), 500); } }
       else if (e.k === "die" && el) { el.classList.add("dead"); }
       else if (e.k === "leap" && el) { el.classList.add("leap"); sfx("cast"); setTimeout(() => el.classList.remove("leap"), 480 / Math.min(2, UI.speed)); }
+      else if (e.k === "rein") { fx("sudden", UI.flip ? 4 : 3.5, 3, "🤝 Renforts de " + e.n + " !", 1800); sfx("lvl"); }
       else if (e.k === "sudden") { fx("sudden", UI.flip ? 4 : 3.5, 3, "⚡ Mort subite !", 1800); sfx("go"); }
       else if (e.k === "zone") { const z = fx("zone side" + VS(e.side), e.R, e.C, null, 500); z.style.setProperty("--zr", e.r); }
       else if (e.k === "flash") { const b = $("#ar-board"); b.classList.add("flash"); setTimeout(() => b.classList.remove("flash"), 350); }
@@ -919,9 +956,9 @@
   }
   const fmt = n => Math.round(n).toLocaleString("fr-FR");
   function over() {
-    const pl = G.me.place; if (pl === 1) return cine();
+    let pl = G.me.place; if (pl === 1) return cine(); if (G.duo) pl = Math.ceil(pl / 2);
     music(null); const m = document.createElement("div"); m.className = "ar-modal";
-    m.innerHTML = `<div class="ar-sheet ar-over"><h2>${pl <= 4 ? "Top " + pl : pl + "e place"}</h2><p>Tu termines ${pl}e sur ${G.n}, à la manche ${G.info.st}-${G.info.k}.</p>
+    m.innerHTML = `<div class="ar-sheet ar-over"><h2>${pl <= 4 ? "Top " + pl : pl + "e place"}</h2><p>${G.duo ? `Ton équipe termine ${pl}e sur 4` : `Tu termines ${pl}e sur ${G.n}`}, à la manche ${G.info.st}-${G.info.k}.</p>
       <div class="ar-row"><button class="ar-b go" data-act="again">Rejouer</button><button class="ar-b" data-act="quit">Quitter</button></div></div>`;
     root.appendChild(m);
   }
@@ -953,5 +990,5 @@
       <div class="ar-ctab">${L.map(({ x, st }, i) => `<div class="ar-crow c${UN[x.n].c} ${i ? "" : "mvp"}"><div class="ar-cmini" style="${bg(x.n)}"></div><div class="ar-cn"><b>${esc(artOf(x.n).nm)}</b><small>${stars(x.star)}${i ? "" : " · MVP"}</small></div><span>⚔️ ${fmt(st.d)}</span><span>💀 ${st.k}</span><span>💚 ${fmt(st.h)}</span><span>🛡️ ${fmt(st.t)}</span></div>`).join("")}</div>
       <div class="ar-row"><button class="ar-b go" data-act="again">Rejouer</button><button class="ar-b" data-act="quit">Quitter</button></div></div>`;
   }
-  W.WikiArena = { open, close, _t: { EVENTS, MP, mpGo, packBoard, UN, SET, TR, newGame, simRun, simInit, step, teamOf, buy, sell, merge, botTurn, prepareFights, resolveFight, resolveOthers, roundEnd, watch, roundInfo, pveTeam, TRK, BOSS, ITEM, FUS, COMP, equip, giveItems, cine, get G() { return G; } } };
+  W.WikiArena = { open, close, _t: { playRound, roundTick, EVENTS, MP, mpGo, packBoard, UN, SET, TR, newGame, simRun, simInit, step, teamOf, buy, sell, merge, botTurn, prepareFights, resolveFight, resolveOthers, roundEnd, watch, roundInfo, pveTeam, TRK, BOSS, ITEM, FUS, COMP, equip, giveItems, cine, get G() { return G; } } };
 })();
