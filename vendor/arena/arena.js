@@ -798,7 +798,7 @@
     const b = $("#ar-board"); b.classList.toggle("fight", G.phase === "fight");
   }
   function drawBench() { $("#ar-bench").innerHTML = G.me.bench.map((x, i) => `<div class="ar-slot ${x && UI.sel === x ? "sel" : ""}" data-bench="${i}">${x ? tokenHTML(x.n, x.star, UN[x.n].c, "pp", x.it) : ""}</div>`).join("") + `<span class="ar-cap">${G.me.board.length}/${G.me.lvl}</span>`; }
-  function drawItems() { const p = G.me; $("#ar-items").innerHTML = `<button class="ar-it mag ${UI.selItem === "magnet" ? "sel" : ""}" data-item="magnet" title="Aimant">🧲</button>` + p.items.map((id, i) => `<button class="ar-it ${isComp(id) ? "comp" : "full"} ${UI.selItem === i ? "sel" : ""}" data-item="${i}">${ITEM[id].ic}</button>`).join("") + (p.items.length ? "" : `<span class="ar-hint">Tes objets arrivent ici : bats les monstres et les boss.</span>`) + `<button class="ar-b ar-guide" data-act="guide">📖 Objets</button>`; }
+  function drawItems() { const p = G.me; $("#ar-items").innerHTML = `<button class="ar-it mag ${UI.selItem === "magnet" ? "sel" : ""}" data-item="magnet" title="Aimant">🧲</button>` + p.items.map((id, i) => `<button class="ar-it ${isComp(id) ? "comp" : "full"} ${UI.selItem === i ? "sel" : ""}" data-item="${i}">${ITEM[id].ic}</button>`).join("") + (p.items.length ? (p.items.filter(isComp).length >= 2 ? `<span class="ar-hint">Glisse un composant sur un autre pour les fusionner.</span>` : "") : `<span class="ar-hint">Tes objets arrivent ici : bats les monstres et les boss.</span>`) + `<button class="ar-b ar-guide" data-act="guide">📖 Objets</button>`; }
   const mateOf = p => G.duo ? G.players.find(q => q.team === p.team && q !== p) : null;
   // duo : donne une unité (avec ses objets) à son coéquipier, une fois par manche
   function gift(x) {
@@ -809,6 +809,12 @@
     sfx("gold"); note(`🎁 ${artOf(x.n).nm} envoyé à ${m.name}.`); drawAll();
   }
   function receive(L) { const p = G.me; (L || []).forEach(g => { if (!UN[g.n]) return; const x = { n: g.n, star: g.s || 1, it: (g.it || []).filter(id => ITEM[id]) }; const i = p.bench.indexOf(null); if (i >= 0) { p.bench[i] = x; merge(p); note(`🎁 Tu reçois ${artOf(x.n).nm} !`); sfx("gold"); } else { p.gold += sellVal(x); p.items.push(...x.it); note(`🎁 Banc plein : ${artOf(x.n).nm} a été vendu.`); } }); }
+  // fusionne deux composants directement dans l'inventaire, sans passer par une unité
+  function craft(i, j) {
+    const p = G.me, a = p.items[i], b = p.items[j]; UI.selItem = null; UI.info = null;
+    if (i === j || !a || !b || !isComp(a) || !isComp(b)) return false; const f = FUS[[a, b].sort().join("+")];
+    p.items = p.items.filter((_, k) => k !== i && k !== j); p.items.push(f); sfx("star"); note(`✨ ${ITEM[f].ic} ${ITEM[f].n} : ${ITEM[f].t}`); UI.info = { item: f }; drawAll(); return true;
+  }
   // utilise l'objet sélectionné (ou l'aimant) sur l'unité x
   function useItem(sel, x) {
     const p = G.me; UI.selItem = null; UI.info = null;
@@ -821,11 +827,11 @@
   const stTxt = st => Object.keys(st).map(k => ({ ad: v => `+${Math.round(v * 100)} % dégâts d'attaque`, as: v => `+${Math.round(v * 100)} % vitesse d'attaque`, sp: v => `+${Math.round(v * 100)} % puissance des sorts`, mana: v => `+${v} mana au départ`, ar: v => `+${v} armure`, mr: v => `+${v} résistance magique`, hp: v => `+${v} PV`, crit: v => `+${Math.round(v * 100)} % critique` })[k](st[k])).join(" · ");
   function itemHTML(id) { const I = ITEM[id];
     if (id === "magnet") return `<div class="ar-ibig">🧲</div><div class="ar-itx"><h3>Aimant</h3><p>Réutilisable à volonté : glisse-le (ou touche-le puis touche une unité) pour récupérer tous ses objets.</p><p class="ar-ipl">💡 Les objets fusionnés ne se séparent pas. Vendre une unité rend aussi ses objets.</p></div>`;
-    if (isComp(id)) return `<div class="ar-ibig">${I.ic}</div><div class="ar-itx"><h3>${I.n} <small>composant</small></h3><p class="ar-ist">${stTxt(I.st)}</p><p>Deux composants sur la même unité fusionnent :</p><div class="ar-rec">${CK.map(k => { const f = ITEM[FUS[[id, k].sort().join("+")]]; return `<p><span>${I.ic}+${COMP[k].ic}</span> <b>${f.ic} ${f.n}</b> : ${f.t}</p>`; }).join("")}</div></div>`;
+    if (isComp(id)) return `<div class="ar-ibig">${I.ic}</div><div class="ar-itx"><h3>${I.n} <small>composant</small></h3><p class="ar-ist">${stTxt(I.st)}</p><p>Deux composants fusionnent, sur une unité ou directement dans ta réserve (glisse l'un sur l'autre) :</p><div class="ar-rec">${CK.map(k => { const f = ITEM[FUS[[id, k].sort().join("+")]]; return `<p><span>${I.ic}+${COMP[k].ic}</span> <b>${f.ic} ${f.n}</b> : ${f.t}</p>`; }).join("")}</div></div>`;
     return `<div class="ar-ibig">${I.ic}</div><div class="ar-itx"><h3>${I.n} <small>${COMP[I.mk[0]].ic} + ${COMP[I.mk[1]].ic}</small></h3><p class="ar-ist">${stTxt(I.st)}</p><p><b>Effet :</b> ${I.t}</p><p class="ar-ipl">💡 <b>Conseil :</b> ${I.tip}</p></div>`; }
   function guide() {
     const m = document.createElement("div"); m.className = "ar-modal";
-    m.innerHTML = `<div class="ar-sheet ar-gsheet"><h2>📖 Les objets</h2><p>Les monstres et les boss donnent des <b>composants</b>. Pose-en deux sur la même unité : ils fusionnent en un objet complet, plus fort. Une unité porte 3 objets au maximum. L'<b>aimant 🧲</b> récupère les objets d'une unité, autant de fois que tu veux.</p>
+    m.innerHTML = `<div class="ar-sheet ar-gsheet"><h2>📖 Les objets</h2><p>Les monstres et les boss donnent des <b>composants</b>. Pose-en deux sur la même unité, ou glisse un composant sur un autre dans ta réserve : ils fusionnent en un objet complet, plus fort. Une unité porte 3 objets au maximum. L'<b>aimant 🧲</b> récupère les objets d'une unité, autant de fois que tu veux.</p>
       <h3>Composants</h3><div class="ar-gcomp">${CK.map(k => `<span>${COMP[k].ic} <b>${COMP[k].n}</b><small>${COMP[k].d}</small></span>`).join("")}</div>
       <h3>Tableau des fusions</h3><div class="ar-gtab"><i></i>${CK.map(k => `<i title="${COMP[k].n}">${COMP[k].ic}</i>`).join("")}${CK.map(a => `<i title="${COMP[a].n}">${COMP[a].ic}</i>` + CK.map(b => { const f = ITEM[FUS[[a, b].sort().join("+")]]; return `<button data-gi="${f.id}" title="${esc(f.n)}">${f.ic}</button>`; }).join("")).join("")}</div>
       <div class="ar-gone" id="ar-gone"><span class="ar-hint">Touche une case du tableau pour voir l'objet.</span></div>
@@ -906,13 +912,14 @@
       else { UI.sel = null; UI.selItem = DG.item; UI.info = { item: DG.item === "magnet" ? "magnet" : G.me.items[DG.item] }; drawAll(); root.classList.add("dragitem"); g.className = "ar-ghost item"; g.textContent = DG.item === "magnet" ? "🧲" : ITEM[G.me.items[DG.item]].ic; }
       document.body.appendChild(g); }
     e.preventDefault(); DG.g.style.transform = `translate(${e.clientX}px,${e.clientY}px) translate(-50%,-60%) scale(1.15)`;
-    const el = document.elementFromPoint(e.clientX, e.clientY), t = el && (el.closest("[data-cell]") || el.closest("[data-bench]") || DG.x && el.closest("#ar-shopbar"));
+    const el = document.elementFromPoint(e.clientX, e.clientY), t = el && (el.closest("[data-cell]") || el.closest("[data-bench]") || DG.x && el.closest("#ar-shopbar") || DG.item != null && el.closest("[data-item]"));
     if (t !== DG.over) { if (DG.over) DG.over.classList.remove("over"); DG.over = t || null; if (t) t.classList.add("over"); }
   }
   function dragUp(e) {
     if (DG.x == null && DG.item == null || e.pointerId !== DG.id) return; const x = DG.x, it = DG.item, was = DG.on; dragEnd(); if (!was) return;
     UI.noClick = Date.now(); const el = document.elementFromPoint(e.clientX, e.clientY), c = G.phase === "plan" && el && el.closest("[data-cell]"), b = el && el.closest("[data-bench]");
-    if (it != null) { const u = unitAt(c || b); if (u) return useItem(it, u); UI.selItem = null; UI.info = null; return drawAll(); }
+    if (it != null) { const ob = el && el.closest("[data-item]"); if (ob && typeof it === "number" && ob.dataset.item !== "magnet" && +ob.dataset.item !== it) { if (!craft(it, +ob.dataset.item)) { sfx("err"); note("Seuls deux composants peuvent fusionner."); drawAll(); } return; }
+      const u = unitAt(c || b); if (u) return useItem(it, u); UI.selItem = null; UI.info = null; return drawAll(); }
     if (c) dropOn(x, { cell: c.dataset.cell.split(",").map(Number) }); else if (b) dropOn(x, { bench: +b.dataset.bench }); else if (el && el.closest("#ar-shopbar")) dropOn(x, { sell: 1 }); else { UI.sel = null; UI.info = null; drawAll(); }
   }
   function dragEnd() { document.removeEventListener("pointermove", dragMove); document.removeEventListener("pointerup", dragUp); document.removeEventListener("pointercancel", dragEnd); if (DG.g) DG.g.remove(); if (DG.over) DG.over.classList.remove("over"); DG.g = DG.over = DG.x = DG.item = null; DG.on = false; if (root) root.classList.remove("dragging", "dragitem"); }
@@ -923,7 +930,7 @@
     const act = t.closest("[data-act]"); if (act && !act.disabled) return doAct(act.dataset.act);
     const tr = t.closest("[data-trait]"); if (tr) return traitPop(tr.dataset.trait);
     const rc = t.closest("[data-reci]"); if (rc) { const I = ITEM[rc.dataset.reci], m = document.createElement("div"); m.className = "ar-modal"; m.innerHTML = `<div class="ar-sheet"><div class="ar-info open" style="position:static;margin:0;border:0">${itemHTML(I.id)}</div><p class="ar-hint">Pour le fabriquer : pose ${COMP[I.mk[0]].ic} ${COMP[I.mk[0]].n} et ${COMP[I.mk[1]].ic} ${COMP[I.mk[1]].n} sur la même unité.</p><button class="ar-b" data-x>Fermer</button></div>`; root.appendChild(m); m.onclick = ev => { if (ev.target === m || ev.target.closest("[data-x]")) m.remove(); }; return; }
-    const itb = t.closest("[data-item]"); if (itb && G && G.phase !== "over") { const k = itb.dataset.item === "magnet" ? "magnet" : +itb.dataset.item; UI.sel = null; UI.selItem = UI.selItem === k ? null : k; UI.info = UI.selItem == null ? null : { item: k === "magnet" ? "magnet" : G.me.items[k] }; if (UI.selItem != null) sfx("pick"); return drawAll(); }
+    const itb = t.closest("[data-item]"); if (itb && G && G.phase !== "over") { const k = itb.dataset.item === "magnet" ? "magnet" : +itb.dataset.item; if (typeof k === "number" && typeof UI.selItem === "number" && UI.selItem !== k && isComp(G.me.items[k]) && isComp(G.me.items[UI.selItem])) return craft(UI.selItem, k); UI.sel = null; UI.selItem = UI.selItem === k ? null : k; UI.info = UI.selItem == null ? null : { item: k === "magnet" ? "magnet" : G.me.items[k] }; if (UI.selItem != null) sfx("pick"); return drawAll(); }
     const sc = t.closest("[data-scout]"); if (sc && G && !G.fights) return scout(G.players[+sc.dataset.scout]);
     const pl = t.closest("[data-pl]"); if (pl && G && G.fights) { const q = G.players[+pl.dataset.pl], f = G.fights.find(x => x.a === q || x.b === q); if (f && f !== UI.view) { if (EVT === "brouillard" && f !== UI.fight) { sfx("err"); note("🌫️ Brouillard : impossible de regarder les autres combats."); return; } sfx("pick"); watch(f); } return; }
     if (!G || G.phase === "over") return;

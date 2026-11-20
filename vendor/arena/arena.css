@@ -463,3 +463,5 @@ body.ar-open{overflow:hidden}
 .ar-ipic{align-self:flex-start}
 .ar-left .ar-info .ar-ibtn{position:static;order:-1}
 @media (max-width:900px){.ar-info{max-height:46vh}.ar-info .ar-ipic{width:54px}.ar-left .ar-info .ar-ibtn{order:0}}
+
+.ar-it.over{box-shadow:0 0 0 3px #8dffb5,0 0 12px #8dffb5;transform:scale(1.12)}
