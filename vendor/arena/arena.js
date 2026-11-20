@@ -671,11 +671,12 @@
       } catch (err) { note(err.message); } };
   }
   const evOpts = sel => `<option value="">Aucun</option><option value="hasard" ${sel === "hasard" ? "selected" : ""}>🎲 Au hasard</option>` + Object.keys(EVENTS).map(k => `<option value="${k}" ${sel === k ? "selected" : ""}>${EVENTS[k][0]} ${EVENTS[k][1]}</option>`).join("");
+  const pickSet = v => v === "alea" ? (Math.random() < .5 ? 1 : 2) : ({ 1: 1, 2: 2 })[v] || "mix";
   const pickEvent = v => v === "hasard" ? Object.keys(EVENTS)[Math.floor(Math.random() * Object.keys(EVENTS).length)] : EVENTS[v] ? v : null;
   function mpRoom() { MP.sig = null; MP.gid = null; root.innerHTML = `<div class="ar-menu"><h1>⚔️ Salon</h1><div id="ar-room"><p>Connexion…</p></div></div>`;
     root.onclick = async e => { const a = e.target.closest("[data-act]"); if (!a) return;
       try { if (a.dataset.act === "mpquit") { await mpLeave(); return menu(); }
-        if (a.dataset.act === "mpstart") { const v = k => (root.querySelector("#ar-" + k) || {}).value; await rpc("ar_start", { p_room: MP.room, p_cfg: { seed: Math.floor(Math.random() * 2e9), diff: v("mpdiff") || "normal", event: pickEvent(v("mpev")), bots: v("mpbots") !== "non", duo: v("mpmode") === "duo", set: ({ 1: 1, 2: 2 })[v("mpset")] || "mix" } }); mpTick(); }
+        if (a.dataset.act === "mpstart") { const v = k => (root.querySelector("#ar-" + k) || {}).value; await rpc("ar_start", { p_room: MP.room, p_cfg: { seed: Math.floor(Math.random() * 2e9), diff: v("mpdiff") || "normal", event: pickEvent(v("mpev")), bots: v("mpbots") !== "non", duo: v("mpmode") === "duo", set: pickSet(v("mpset")) } }); mpTick(); }
       } catch (err) { note(err.message); } };
     mpStop(); MP.poll = setInterval(mpTick, 1500); mpTick(); }
   async function mpTick() {
@@ -687,13 +688,13 @@
     if (d.status !== "jeu") { if (G && G.mp && G.phase !== "over") { note("La partie a été arrêtée."); stopLoop(); clearInterval(UI.timer); G = null; mpRoom(); return; } if (G) return;
       const sig = JSON.stringify([d.players, d.host]); if (sig === MP.sig) return; MP.sig = sig; const b = root.querySelector("#ar-room"); if (!b) return;
       b.innerHTML = `<div class="ar-box"><h3>Joueurs (${d.players.length}/8)</h3>${d.players.map(p => `<div class="ar-lrow"><b>${esc(API.name(p.u))}${p.u === d.host ? " 👑" : ""}</b><span>${p.on ? "connecté" : "absent"}</span></div>`).join("")}</div>
-        ${MP.host ? `<div class="ar-box"><h3>Réglages</h3><label class="ar-opt">Cartes <select id="ar-mpset"><option value="1">Set 1 (58 unités)</option><option value="2">Set 2 (59 unités)</option><option value="mix">Les deux mélangés</option></select></label><label class="ar-opt">Mode <select id="ar-mpmode"><option value="solo">Chacun pour soi</option><option value="duo">Duo (équipes de 2 dans l'ordre de la liste)</option></select></label><p class="ar-hint">En duo : le 1er et le 2e joueur font équipe, le 3e et le 4e, etc. Un joueur seul reçoit un bot comme coéquipier, et les places libres sont toujours tenues par des bots.</p><label class="ar-opt">Bots sur les places libres <select id="ar-mpbots"><option value="oui">Oui</option><option value="non">Non</option></select></label><label class="ar-opt">Difficulté des bots <select id="ar-mpdiff"><option value="facile">Facile</option><option value="normal" selected>Normal</option><option value="difficile">Difficile</option></select></label><label class="ar-opt">Événement <select id="ar-mpev">${evOpts("hasard")}</select></label></div>
+        ${MP.host ? `<div class="ar-box"><h3>Réglages</h3><label class="ar-opt">Cartes <select id="ar-mpset"><option value="1">Set 1 (58 unités)</option><option value="2">Set 2 (59 unités)</option><option value="mix">Les deux mélangés</option><option value="alea">🎲 Set au hasard (1 ou 2)</option></select></label><label class="ar-opt">Mode <select id="ar-mpmode"><option value="solo">Chacun pour soi</option><option value="duo">Duo (équipes de 2 dans l'ordre de la liste)</option></select></label><p class="ar-hint">En duo : le 1er et le 2e joueur font équipe, le 3e et le 4e, etc. Un joueur seul reçoit un bot comme coéquipier, et les places libres sont toujours tenues par des bots.</p><label class="ar-opt">Bots sur les places libres <select id="ar-mpbots"><option value="oui">Oui</option><option value="non">Non</option></select></label><label class="ar-opt">Difficulté des bots <select id="ar-mpdiff"><option value="facile">Facile</option><option value="normal" selected>Normal</option><option value="difficile">Difficile</option></select></label><label class="ar-opt">Événement <select id="ar-mpev">${evOpts("hasard")}</select></label></div>
         <div class="ar-row"><button class="ar-b big go" data-act="mpstart">Lancer la partie</button><button class="ar-b" data-act="mpquit">Fermer le salon</button></div>` : `<p>En attente de l'hôte…</p><div class="ar-row"><button class="ar-b" data-act="mpquit">Quitter le salon</button></div>`}`; }
   }
   function mpBegin(s) {
     MP.gid = s.gid; MP.sent = -1; const c = s.cfg || {}, order = s.order || [], me = order.indexOf(API.uid);
     music("main"); newGame(c.diff || "normal", (c.seed | 0) || 1, { event: c.event, humans: order.map(u => ({ uid: u, name: u === API.uid ? "Toi" : API.name(u) })), me, bots: c.bots !== false, duo: !!c.duo, set: c.set }); MP.gifts = [];
-    UI.speed = 1; build(); if (G.event) evBanner();
+    UI.speed = 1; build(); if (G.event) evBanner(); note("Cartes : " + SETN[G.set] + (G.duo ? " · mode duo" : ""));
   }
   // « Prêt » : j'envoie mon plateau (l'hôte envoie aussi ceux des bots et les PV de tout le monde)
   async function mpReady() {
@@ -740,7 +741,7 @@
       <p>Recrute des cartes dans la boutique, place-les sur ton plateau et regarde-les se battre. Trois cartes identiques fusionnent en ★★, puis en ★★★. Réunis des cartes du même univers ou de la même classe pour activer des synergies. Dernier joueur en vie : victoire !</p>
       <div class="ar-box"><h3>Solo contre 7 bots</h3>
         <div class="ar-diff"><span>Difficulté :</span>${[["facile", "Facile"], ["normal", "Normal"], ["difficile", "Difficile"]].map(([k, l]) => `<button class="ar-b ${k === "normal" ? "on" : ""}" data-diff="${k}">${l}</button>`).join("")}</div>
-        <label class="ar-opt">Cartes <select id="ar-set"><option value="1">Set 1 (58 unités)</option><option value="2">Set 2 (59 unités)</option><option value="mix">Les deux mélangés</option></select></label>
+        <label class="ar-opt">Cartes <select id="ar-set"><option value="1">Set 1 (58 unités)</option><option value="2">Set 2 (59 unités)</option><option value="mix">Les deux mélangés</option><option value="alea">🎲 Set au hasard (1 ou 2)</option></select></label>
         <label class="ar-opt">Mode <select id="ar-mode"><option value="solo">Chacun pour soi</option><option value="duo">Duo : toi et un bot contre 3 équipes</option></select></label>
         <label class="ar-opt">Événement <select id="ar-ev">${evOpts("")}</select></label>
         <button class="ar-b big go" data-act="start">Jouer en solo</button></div>
@@ -748,7 +749,7 @@
       <div class="ar-row"><button class="ar-b" data-act="help">Règles</button><button class="ar-b" data-act="quit">Quitter</button></div></div>`;
     root.onclick = e => { const d = e.target.closest("[data-diff]"); if (d) { root.querySelectorAll("[data-diff]").forEach(b => b.classList.toggle("on", b === d)); return; }
       const a = e.target.closest("[data-act]"); if (!a) return; if (a.dataset.act === "quit") return close(); if (a.dataset.act === "help") return help(); if (a.dataset.act === "multi") return mpLobby();
-      if (a.dataset.act === "start") { music("main"); newGame((root.querySelector("[data-diff].on") || {}).dataset.diff || "normal", 0, { event: pickEvent(root.querySelector("#ar-ev").value), duo: root.querySelector("#ar-mode").value === "duo", set: ({ 1: 1, 2: 2 })[root.querySelector("#ar-set").value] || "mix" }); build(); if (G.event) evBanner(); } };
+      if (a.dataset.act === "start") { music("main"); newGame((root.querySelector("[data-diff].on") || {}).dataset.diff || "normal", 0, { event: pickEvent(root.querySelector("#ar-ev").value), duo: root.querySelector("#ar-mode").value === "duo", set: pickSet(root.querySelector("#ar-set").value) }); build(); if (root.querySelector("#ar-set") == null) note("Cartes : " + SETN[G.set]); if (G.event) evBanner(); } };
   }
   function help() {
     const m = document.createElement("div"); m.className = "ar-modal"; m.innerHTML = `<div class="ar-sheet"><h2>Règles</h2>
