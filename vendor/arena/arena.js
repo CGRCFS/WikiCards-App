@@ -3,7 +3,7 @@
   "use strict";
   const W = typeof window !== "undefined" ? window : globalThis;
   const IDS = W.ARENA_IDS || {};
-  const ORI = { catch: ["Catch", "🤼"], pol: ["Politique", "🏛️"], hor: ["Horreur", "👻"], manga: ["Manga", "🍥"], jv: ["Jeux vidéo", "🎮"], meme: ["Memes", "😹"], da: ["Dessins animés", "📺"], hero: ["Super-héros", "🦸"], vid: ["Vidéastes", "🎬"], chat: ["Chat", "🐱"] };
+  const ORI = { catch: ["Catch", "🤼"], pol: ["Politique", "🏛️"], hor: ["Horreur", "👻"], manga: ["Manga", "🍥"], jv: ["Jeux vidéo", "🎮"], meme: ["Memes", "😹"], da: ["Dessins animés", "📺"], hero: ["Super-héros", "🦸"], vid: ["Vidéastes", "🎬"], chat: ["Chat", "🐱"], series: ["Séries", "🎞️"], disney: ["Disney", "🏰"], mytho: ["Mythologie", "⚡"] };
   const CLS = { col: ["Colosse", "🛡️"], bag: ["Bagarreur", "👊"], ass: ["Assassin", "🗡️"], tir: ["Tireur", "🏹"], mag: ["Mage", "✨"], sou: ["Soutien", "💚"], str: ["Stratège", "📣"] };
   const TNAME = k => (ORI[k] || CLS[k])[0], TICO = k => (ORI[k] || CLS[k])[1];
   // synergies : paliers (t), valeurs par palier (v), description (d)
@@ -18,6 +18,9 @@
     hero: { t: [2, 4, 6], v: [[20], [45], [80]], d: v => `Les Super-héros gagnent ${v[0]} d'armure et de résistance magique.` },
     vid: { t: [2, 4, 6], v: [[1], [2], [4]], d: v => `Tu gagnes ${v[0]} or de plus après chaque combat gagné.` },
     chat: { t: [2, 3], v: [[20, 15], [40, 30]], d: v => `Les Chats ont ${v[0]} % d'esquive et ${v[1]} % de vitesse d'attaque.` },
+    series: { t: [3, 5, 7, 9], v: [[120], [280], [480], [750]], d: v => `Au début du combat, toute ton équipe reçoit un bouclier de ${v[0]}.` },
+    disney: { t: [3, 5, 7, 9], v: [[1.5], [3], [5], [8]], d: v => `Les unités Disney récupèrent ${v[0]} % de leurs PV max chaque seconde.` },
+    mytho: { t: [3, 5, 7, 9], v: [[12], [25], [40], [60]], d: v => `Les unités de Mythologie infligent ${v[0]} % de dégâts en plus.` },
     col: { t: [2, 4, 6], v: [[200], [450], [800]], d: v => `Les Colosses gagnent ${v[0]} PV.` },
     bag: { t: [2, 4, 6], v: [[10], [20], [35]], d: v => `Les Bagarreurs se soignent de ${v[0]} % des dégâts qu'ils infligent.` },
     ass: { t: [2, 4, 6], v: [[15, 20], [30, 40], [50, 60]], d: v => `Les Assassins sautent sur la ligne arrière et gagnent ${v[0]} % de chance de critique et ${v[1]} % de dégâts critiques.` },
@@ -31,7 +34,7 @@
   const HPB = [550, 700, 850, 1050, 1300], ADB = [45, 52, 62, 75, 95], SPD = [200, 260, 330, 430, 620], STAR = [1, 1.8, 3.24], SSTAR = [1, 1.5, 2.4];
   const COSTC = ["#8a94a6", "#2fbf71", "#3b82f6", "#b44cf0", "#f5b301"];
   const UN = {};   // unités du set
-  let CURSET = 1; const SETS = { 1: [], 2: [] };
+  let CURSET = 1; const SETS = { 1: [], 2: [], 3: [] };
   const U = (n, c, cl, o, s) => { UN[n] = { n, c, cl, o, s }; SETS[CURSET].push(n); };
   // --- Set 1 ---
   U("Rey Mysterio", 1, "ass", ["catch"], { k: "strike", p: .8, stun: .5, n: "619", t: "Frappe sa cible et l'étourdit." });
@@ -153,7 +156,83 @@
   U("Xavier Dang", 3, "mag", ["vid"], { k: "aoeT", p: 1.3, r: 1, stun: 1, n: "Speedrun", t: "Dégâts et étourdissement sur sa cible et ses voisins." });
   U("AmineMaTue", 3, "bag", ["vid"], { k: "buff", who: "self", s: "as", v: .6, d: 5, n: "Rage", t: "S'énerve : +60 % de vitesse d'attaque pendant 5 s." });
   U("Markiplier", 4, "mag", ["vid"], { k: "aoeT", p: 1.2, r: 2, stun: 1, n: "Jumpscare", t: "Fait sursauter une large zone : dégâts et étourdissement." });
-  const SETN = { 1: "Set 1", 2: "Set 2", mix: "Les deux sets mélangés" };
+  // --- Set 3 : 5 univers de 13 unités ---
+  CURSET = 3;
+  U("SCP-173", 1, "ass", ["hor"], { k: "strike", p: 1.2, stun: .8, n: "Clin d'œil", t: "Dès qu'on cligne des yeux, il frappe et étourdit sa cible." });
+  U("Laughing Jack", 1, "col", ["hor"], { k: "heal", who: "self", p: .6, selfArmor: 8, n: "Bonbons", t: "Se soigne et gagne de l'armure." });
+  U("Baba Yaga", 2, "sou", ["hor"], { k: "heal", who: "low", p: 1, sh: .5, n: "Potion", t: "Soigne et protège l'allié le plus blessé." });
+  U("Leatherface", 2, "bag", ["hor"], { k: "aoeS", p: .4, r: 1, phys: 1, n: "Tronçonneuse", t: "Tranche tous les ennemis adjacents." });
+  U("Hannibal Lecter", 3, "ass", ["hor"], { k: "strike", p: 1.5, tp: "low", n: "Dîner", t: "Surgit sur l'ennemi le plus faible." });
+  U("Jill Valentine", 3, "tir", ["hor"], { k: "aoeT", p: .75, r: 1, n: "Lance-grenades", t: "Une grenade explose sur sa cible et ses voisins." });
+  U("Liche", 4, "mag", ["hor"], { k: "summon", cnt: [2, 2, 3], hp: 520, ad: 55, m: 70, sn: "Squelette", n: "Armée des morts", t: "Relève des squelettes pour se battre à sa place." });
+  U("Pinhead", 4, "str", ["hor"], { k: "multi", cnt: 3, p: 1, stun: 1.5, m: 70, n: "Chaînes", t: "Des chaînes immobilisent et blessent 3 ennemis." });
+  U("Ben Drowned", 4, "bag", ["hor"], { k: "strike", p: 1.4, untarg: 1.5, n: "Glitch", t: "Frappe, puis disparaît dans un glitch : inciblable 1,5 s." });
+  U("Kayako Saeki", 4, "ass", ["hor"], { k: "strike", p: 1.6, tp: "low", stun: 1, n: "Râle", t: "Rampe jusqu'à l'ennemi le plus faible : dégâts et étourdissement." });
+  U("Grippe-Sou", 5, "mag", ["hor"], { k: "stunall", p: 1, stun: [1.5, 2, 3], n: "Lumières mortes", t: "Paralyse et blesse tous les ennemis." });
+  U("Lady Dimitrescu", 5, "col", ["hor"], { k: "aoeS", p: 1.2, r: 1, ls: .4, pas: "ramp", n: "Griffes", t: "Lacère autour d'elle et se soigne. Passif : plus elle perd de PV, plus elle frappe fort." });
+  U("Vecna", 5, "mag", ["hor"], { k: "far", p: 2.8, stun: 2, n: "Malédiction de Vecna", t: "Soulève l'ennemi le plus éloigné : énormes dégâts et étourdissement." });
+  U("Fantômes de Pac-Man", 1, "ass", ["jv"], { k: "multi", cnt: 2, rndT: 1, p: .6, n: "Blinky, Pinky, Inky, Clyde", t: "Touchent 2 ennemis au hasard." });
+  U("Goomba", 1, "bag", ["jv"], { k: "strike", p: 1, n: "Coup de tête", t: "Fonce sur sa cible." });
+  U("Molly", 1, "sou", ["jv"], { k: "heal", who: "low", p: .5, sh: .8, n: "Ravitaillement", t: "Soigne un peu et protège l'allié le plus blessé." });
+  U("Tom Nook", 1, "str", ["jv"], { k: "strike", p: .9, pas: "goldkill", n: "Prêt immobilier", t: "Frappe sa cible. Passif : 1 or par élimination (2 max par combat)." });
+  U("Ada Wong", 2, "ass", ["jv"], { k: "strike", p: 1.3, untarg: 1, n: "Grappin", t: "Frappe puis s'éclipse au grappin : inciblable 1 s." });
+  U("Lúcio", 2, "sou", ["jv"], { k: "buff", who: "all", s: "as", v: .2, d: 4, m: 50, n: "Amplification", t: "Toute l'équipe gagne 20 % de vitesse d'attaque pendant 4 s." });
+  U("Spyro", 2, "mag", ["jv"], { k: "line", p: 1.3, n: "Souffle de feu", t: "Des flammes traversent toute une ligne." });
+  U("Bastion", 3, "tir", ["jv"], { k: "buff", who: "self", s: "as", v: .8, d: 5, n: "Mode tourelle", t: "Se déploie : +80 % de vitesse d'attaque pendant 5 s." });
+  U("Shadow", 3, "ass", ["jv"], { k: "strike", p: 1.4, tp: "low", stun: 1, n: "Chaos Control", t: "Se téléporte sur l'ennemi le plus faible et l'étourdit." });
+  U("Arthur Morgan", 4, "tir", ["jv"], { k: "multi", cnt: 3, p: .2, phys: 1, n: "Sang-froid", t: "Le temps ralentit : 3 tirs critiques sur 3 cibles." });
+  U("Caesar King", 4, "col", ["jv"], { k: "taunt", r: 2, d: 3, v: 25, m: 75, n: "Bouclier", t: "Provoque les ennemis proches et donne de l'armure à toute l'équipe." });
+  U("Dracaufeu", 5, "mag", ["jv"], { k: "aoeT", p: 1.2, r: 2, dot: 1.5, d: 4, n: "Déflagration", t: "Embrase une large zone, qui brûle pendant 4 s." });
+  U("Reinhardt", 5, "col", ["jv"], { k: "aoeS", p: 1.1, r: 2, stun: 1.8, n: "Choc sismique", t: "Frappe le sol : étourdit tous les ennemis dans une large zone." });
+  U("Jim Halpert", 1, "sou", ["series"], { k: "heal", who: "near", p: .6, n: "Regard caméra", t: "Soigne les alliés proches." });
+  U("Bébé Sinclair", 1, "bag", ["series"], { k: "strike", p: 1, stun: .8, n: "Pas la maman !", t: "Un coup de poêle qui étourdit." });
+  U("Daryl Dixon", 1, "tir", ["series"], { k: "strike", p: .5, phys: 1, n: "Arbalète", t: "Un carreau critique garanti." });
+  U("Kermit la grenouille", 2, "sou", ["series"], { k: "buff", who: "all", s: "as", v: .2, d: 4, m: 50, n: "Muppet Show", t: "Toute l'équipe gagne 20 % de vitesse d'attaque pendant 4 s." });
+  U("Omar Little", 2, "ass", ["series"], { k: "strike", p: 1.2, pas: "goldkill", n: "Omar arrive !", t: "Un coup de fusil. Passif : 1 or par élimination (2 max par combat)." });
+  U("Tokyo", 2, "tir", ["series"], { k: "multi", cnt: 2, p: .1, phys: 1, n: "Braquage", t: "Tire sur deux cibles à la fois." });
+  U("Jon Snow", 3, "bag", ["series"], { k: "aoeS", p: .7, r: 1, pas: "revive", n: "Grand-Griffe", t: "Tranche autour de lui. Passif : revient une fois d'entre les morts." });
+  U("Mercredi Addams", 3, "mag", ["series"], { k: "strike", p: 1.8, vuln: .25, d: 6, n: "La Chose", t: "Blesse sa cible, qui subit ensuite 25 % de dégâts en plus." });
+  U("Gus Fring", 3, "str", ["series"], { k: "strike", p: .8, dot: 1.4, d: 4, m: 60, n: "Poison", t: "Empoisonne sa cible pendant 4 s." });
+  U("Thomas Shelby", 4, "str", ["series"], { k: "buff", who: "all", s: "amp", v: .25, d: 6, m: 50, n: "Par ordre des Peaky Blinders", t: "Toute l'équipe inflige 25 % de dégâts en plus pendant 6 s." });
+  U("Gregor Clegane", 4, "col", ["series"], { k: "strike", p: 1.5, stun: 1.5, n: "La Montagne", t: "Écrase sa cible : gros dégâts et étourdissement." });
+  U("Grogu", 5, "sou", ["series"], { k: "heal", who: "all", p: .8, sh: .5, m: 80, n: "La Force", t: "Soigne et protège toute l'équipe." });
+  U("TARDIS", 5, "str", ["series"], { k: "tardis", m: 60, n: "Le Docteur", t: "Ne bouge pas et n'attaque pas : envoie un Docteur se battre. ★ le Premier ou le Neuvième, ★★ le Dixième ou le Onzième, ★★★ le Douzième. Si son Docteur est encore en vie, il le régénère." });
+  U("Jiminy Cricket", 1, "sou", ["disney"], { k: "mana", r: 2, v: 25, m: 50, n: "Conscience", t: "Donne 25 mana aux alliés proches." });
+  U("Le Petit Grille-pain courageux", 1, "col", ["disney"], { k: "aoeS", p: .6, r: 1, n: "Toasts brûlants", t: "Projette des toasts sur les ennemis adjacents." });
+  U("Judy Hopps", 1, "tir", ["disney"], { k: "strike", p: .6, stun: .5, n: "Fléchette", t: "Une fléchette tranquillisante étourdit sa cible." });
+  U("Winnie l'ourson", 2, "col", ["disney"], { k: "heal", who: "self", p: 1.2, selfArmor: 12, n: "Pot de miel", t: "Mange du miel : se soigne et gagne de l'armure." });
+  U("Jasmine", 2, "str", ["disney"], { k: "summon", cnt: [1, 1, 1], hp: 520, ad: 60, m: 70, sn: "Rajah", n: "Rajah", t: "Appelle son tigre Rajah." });
+  U("Stitch", 3, "ass", ["disney"], { k: "aoeS", p: 1, r: 1, n: "Expérience 626", t: "Se déchaîne sur tous les ennemis adjacents." });
+  U("Sulli", 3, "col", ["disney"], { k: "aoeS", p: 1.1, r: 1, stun: 1.2, n: "Rugissement", t: "Terrifie et étourdit les ennemis adjacents." });
+  U("Baymax", 3, "sou", ["disney"], { k: "heal", who: "low", p: 1.4, sh: .6, n: "Assistant de santé", t: "Soigne fortement et protège l'allié le plus blessé." });
+  U("Mickey Mouse", 4, "str", ["disney"], { k: "summon", cnt: [2, 2, 3], hp: 450, ad: 45, m: 70, sn: "Balai enchanté", n: "L'Apprenti sorcier", t: "Anime des balais qui se battent pour lui." });
+  U("Merlin", 4, "mag", ["disney"], { k: "aoeT", p: 1.4, r: 2, slow: .3, d: 4, n: "Higitus Figitus", t: "Un sort de zone qui blesse et ralentit les attaques de 30 %." });
+  U("Mufasa", 4, "bag", ["disney"], { k: "aoeS", p: 1, r: 2, stun: 1, n: "Rugissement du roi", t: "Étourdit et blesse dans une large zone." });
+  U("Empereur Zurg", 5, "tir", ["disney"], { k: "line", p: 1.25, n: "Canon ionique", t: "Un rayon qui traverse toute une ligne." });
+  U("La Bête", 5, "col", ["disney"], { k: "strike", p: 1.4, stun: 1, pas: "enrage", n: "Fureur", t: "Un coup de griffe qui étourdit. Passif : dès qu'elle est blessée, elle s'enrage." });
+  U("Ulysse", 1, "str", ["mytho"], { k: "buff", who: "near", s: "ad", v: .25, d: 5, m: 50, n: "Ruse", t: "Les alliés proches gagnent 25 % de dégâts d'attaque pendant 5 s." });
+  U("Cerbère", 1, "bag", ["mytho"], { k: "multi", cnt: 3, p: .4, n: "Trois gueules", t: "Mord 3 ennemis à la fois." });
+  U("Circé", 2, "mag", ["mytho"], { k: "strike", p: 1.2, stun: 1.5, n: "Métamorphose", t: "Change sa cible en cochon : étourdie 1,5 s." });
+  U("Héphaïstos", 2, "sou", ["mytho"], { k: "buff", who: "all", s: "armor", v: 25, d: 6, m: 60, n: "Forge divine", t: "Toute l'équipe gagne 25 d'armure et de résistance pendant 6 s." });
+  U("Erlik", 2, "tir", ["mytho"], { k: "strike", p: .5, dot: .5, d: 3, n: "Flèche des enfers", t: "Une flèche maudite qui brûle pendant 3 s." });
+  U("Artémis", 3, "tir", ["mytho"], { k: "far", p: 1.1, n: "Flèche d'argent", t: "Un tir chargé sur l'ennemi le plus éloigné." });
+  U("Méduse", 3, "mag", ["mytho"], { k: "line", p: 1.2, stun: 1.2, n: "Regard pétrifiant", t: "Pétrifie tous les ennemis sur une ligne." });
+  U("Atlas", 3, "col", ["mytho"], { k: "taunt", r: 2, d: 3, v: 25, m: 75, n: "Porter le ciel", t: "Provoque les ennemis proches et donne de l'armure à toute l'équipe." });
+  U("Mars", 4, "bag", ["mytho"], { k: "aoeS", p: .9, r: 1, ls: .25, n: "Fureur guerrière", t: "Frappe tout autour de lui et se soigne." });
+  U("Neptune", 4, "mag", ["mytho"], { k: "aoeT", p: 1.3, r: 2, stun: 1, n: "Raz-de-marée", t: "Une vague frappe et étourdit une large zone." });
+  U("Achille", 4, "col", ["mytho"], { k: "dodge", d: 2.5, v: .5, n: "Invulnérable", t: "Esquive toutes les attaques pendant 2,5 s, puis frappe plus fort." });
+  U("Susanoo", 5, "ass", ["mytho"], { k: "strike", p: 1.5, tp: "low", reset: 1, n: "Kusanagi", t: "Fond sur l'ennemi le plus faible. S'il l'élimine, il relance son sort aussitôt." });
+  U("Cronos", 5, "str", ["mytho"], { k: "stunall", p: 1, stun: [1.5, 2, 3.5], m: 70, n: "Arrêt du temps", t: "Fige et blesse tous les ennemis." });
+  // les Docteurs envoyés par le TARDIS : [PV, dégâts, vitesse, portée, sort]
+  const DOCS = {
+    "Premier Docteur": [700, 40, .65, 3, { k: "heal", who: "low", p: 1, n: "Sagesse" }],
+    "Neuvième Docteur": [850, 60, .75, 1, { k: "aoeS", p: .9, r: 1, n: "Fantastique !" }],
+    "Dixième Docteur": [1200, 75, .8, 3, { k: "far", p: 1.4, stun: 2, n: "Allons-y !" }],
+    "Onzième Docteur": [1200, 70, .8, 3, { k: "buff", who: "all", s: "as", v: .3, d: 5, n: "Geronimo !" }],
+    "Douzième Docteur": [2000, 110, .85, 3, { k: "stunall", p: .9, stun: [1.5, 1.5, 1.5], n: "Guitare sonique" }],
+  };
+  const DOCT = [["Premier Docteur", "Neuvième Docteur"], ["Dixième Docteur", "Onzième Docteur"], ["Douzième Docteur"]];
+  const SETN = { 1: "Set 1", 2: "Set 2", 3: "Set 3", mix: "Sets 1 et 2 mélangés" };
   let SET = SETS[1];
   // monstres neutres : [nom, PV, dégâts, vitesse]
   const MON = { Dodo: [170, 14, .6], Capybara: [230, 18, .6], Loup: [300, 26, .8], Oie: [520, 48, .9], Sanglier: [900, 70, .7], "Ours brun": [1500, 95, .65] };
@@ -289,7 +368,10 @@
   const hd = (r1, c1, r2, c2) => { const x1 = c1 - (r1 - (r1 & 1)) / 2, x2 = c2 - (r2 - (r2 & 1)) / 2, dx = x1 - x2, dz = r1 - r2; return Math.max(Math.abs(dx), Math.abs(dz), Math.abs(dx + dz)); };
   const dist = (a, b) => hd(a.R, a.C, b.R, b.C);
   function traitsOf(list, aug) { const seen = new Set(), n = {}; list.forEach(x => { if (seen.has(x.n) || !UN[x.n]) return; seen.add(x.n); const d = UN[x.n]; [...d.o, d.cl].forEach(k => n[k] = (n[k] || 0) + 1); }); if (aug && aug.includes("chats2") && n.chat) n.chat *= 2; if (EVT === "chats" && list.length) n.chat = (n.chat || 0) + 1; return n; }
-  const tier = (k, n) => { let i = -1; TR[k].t.forEach((t, j) => { if (n >= t) i = j; }); return i; };
+  const TR3 = { hor: { t: [3, 5, 7, 9], v: [[12], [25], [40], [60]] }, jv: { t: [3, 5, 7, 9], v: [[8], [16], [26], [40]] } };
+  let CURT = 0;   // 3 pendant une partie du set 3 (13 unités par univers : paliers 3 / 5 / 7 / 9)
+  const TRof = k => CURT === 3 && TR3[k] ? Object.assign({}, TR[k], TR3[k]) : TR[k];
+  const tier = (k, n) => { let i = -1; TRof(k).t.forEach((t, j) => { if (n >= t) i = j; }); return i; };
 
   /* ---------- simulation de combat ---------- */
   const DT = .1;
@@ -300,6 +382,7 @@
     else { const d = UN[x.n], b = CB[d.cl], st = STAR[u.star - 1];
       Object.assign(u, { cost: d.c, cl: d.cl, o: d.o, maxhp: HPB[d.c - 1] * b.hp * st, ad: ADB[d.c - 1] * b.ad * st, as: b.as, range: b.rg, armor: b.ar, mr: b.ar, maxMana: d.s.m || b.m, spell: d.s }); }
     if (EVT === "lune") u.as *= 1.25; if (EVT === "geants") u.maxhp *= 1.5;
+    if (u.spell && u.spell.k === "tardis") { u.still = true; u.manaS = 12; u.mana = 45; u.ad = 0; }
     u.items = (x.it || []).slice(); u.it = {};
     u.items.forEach(id => { const I = ITEM[id], st = I.st; u.it[id] = 1; if (st.ad) u.ad *= 1 + st.ad; if (st.as) u.as *= 1 + st.as; if (st.sp) u.sp += st.sp; if (st.mana) u.mana += st.mana; if (st.ar) u.armor += st.ar; if (st.mr) u.mr += st.mr; if (st.hp) u.maxhp += st.hp; if (st.crit) u.critC += st.crit; });
     const I = u.it; if (I.opinel) u.pen = .3; if (I.tournevis) u.ls += .15; if (I.pelle) u.manaAtk += 6; if (I.ciseaux) u.critD += .35; if (I.ventilo) u.range += 1; if (I.elastique) u.dodge += .2; if (I.gourde) u.regen += .02;
@@ -311,7 +394,7 @@
     const S = { units: [], t: 0, rng: rng32(seed), ev: [], delayed: [], grid: {}, gold: [0, 0], goldWin: [0, 0], over: false, win: -1, sdT: EVT === "subite" ? 12 : 30 };
     [A, B].forEach((T, side) => T.units.forEach(x => { const u = mkUnit(S, side, x); while (S.grid[u.R + "," + u.C]) { u.C = (u.C + 1) % COLS; } S.grid[u.R + "," + u.C] = u; S.units.push(u); }));
     [A, B].forEach((T, side) => { const cnt = traitsOf(T.units, T.aug), mine = S.units.filter(u => u.side === side), foes = S.units.filter(u => u.side !== side);
-      Object.keys(cnt).forEach(k => { const ti = tier(k, cnt[k]); if (ti < 0) return; const v = TR[k].v[ti], mem = mine.filter(u => u.o && (u.o.includes(k) || u.cl === k) && !u.mon);
+      Object.keys(cnt).forEach(k => { const ti = tier(k, cnt[k]); if (ti < 0) return; const v = TRof(k).v[ti], mem = mine.filter(u => u.o && (u.o.includes(k) || u.cl === k) && !u.mon);
         if (k === "catch") mem.forEach(u => { u.maxhp += v[0]; u.ad *= 1 + v[1] / 100; });
         else if (k === "pol") mine.forEach(u => u.shield += v[0]);
         else if (k === "hor") foes.forEach(u => { u.armor *= 1 - v[0] / 100; u.mr *= 1 - v[0] / 100; });
@@ -329,6 +412,9 @@
         else if (k === "mag") mem.forEach(u => u.sp += v[0] / 100);
         else if (k === "sou") mine.forEach(u => u.red += v[0] / 100);
         else if (k === "str") mine.forEach(u => u.amp += v[0] / 100);
+        else if (k === "series") mine.forEach(u => u.shield += v[0]);
+        else if (k === "disney") mem.forEach(u => u.regen += v[0] / 100);
+        else if (k === "mytho") mem.forEach(u => u.amp += v[0] / 100);
       }); });
     [A, B].forEach((T, side) => { const AG = T.aug || []; if (!AG.length) return; S.units.forEach(u => { if (u.side !== side) return;
       if (AG.includes("muscu")) u.amp += .12; if (AG.includes("blindage")) { u.armor += 20; u.mr += 20; } if (AG.includes("cardio")) u.as *= 1.12; if (AG.includes("infirmerie")) u.regen += .01;
@@ -386,7 +472,7 @@
   function cast(S, u) {
     const sp = u.spell, foes = foesOf(S, u).filter(e => targetable(S, e)), allies = alliesOf(S, u);
     S.ev.push({ k: "cast", u: u.uid, n: sp.n }); u.atkCd = Math.max(u.atkCd, .35);
-    if (!foes.length && !["heal", "shield", "buff", "mana", "summon", "transform", "dodge"].includes(sp.k)) return;
+    if (!foes.length && !["heal", "shield", "buff", "mana", "summon", "transform", "dodge", "tardis"].includes(sp.k)) return;
     let t = u.tgt && targetable(S, u.tgt) ? u.tgt : foes.slice().sort((a, b) => dist(u, a) - dist(u, b))[0];
     const far = () => foes.slice().sort((a, b) => dist(u, b) - dist(u, a))[0], low = () => foes.slice().sort((a, b) => a.hp - b.hp)[0];
     switch (sp.k) {
@@ -417,6 +503,10 @@
       case "stunall": foes.forEach(e => applyHit(S, u, e, sp, SD(u, sp.p))); S.ev.push({ k: "flash", side: u.side }); break;
       case "half": foes.slice().sort((a, b) => b.hp - a.hp).slice(0, sp.cnt).forEach(e => { dmg(S, u, e, e.hp * (e.boss ? .12 : sp.pc[u.star - 1]), "t"); S.ev.push({ k: "shot", a: u.uid, b: e.uid }); }); S.ev.push({ k: "flash", side: u.side }); break;
       case "dodge": u.dodgeT = S.t + sp.d; u.buffs.push({ s: "ad", v: sp.v * u.star, until: S.t + sp.d + 4 }); break;
+      case "tardis": { if (u.doc && u.doc.alive) { heal(S, u.doc, u.doc.maxhp * .4, false, u); u.doc.shield += u.doc.maxhp * .15; S.ev.push({ k: "cast", u: u.doc.uid, n: "Régénération" }); break; }
+        const L = DOCT[u.star - 1], nm = L[Math.floor(S.rng() * L.length)], D = DOCS[nm], f = freeNear(S, u.R + (u.side ? 1 : -1), u.C, u); if (!f) break;
+        const d = mkUnit(S, u.side, { n: nm, raw: { hp: D[0] * u.sp, ad: D[1] * u.sp, as: D[2], rg: D[3], ar: 35, art: nm, spell: D[4], m: 70, cost: 5 }, r: 0, c: 0 });
+        d.R = f[0]; d.C = f[1]; d.hp = d.maxhp; d.sum = 1; d.owner = u; d.amp = u.amp; d.mon = 0; S.grid[f[0] + "," + f[1]] = d; S.units.push(d); u.doc = d; S.ev.push({ k: "spawn", u: d.uid }); break; }
       case "boom": u.shield += SD(u, sp.sh); S.delayed.push({ t: S.t + 3, fn: () => { if (!u.alive) return; within(S, foesOf(S, u), u.R, u.C, sp.r).forEach(e => dmg(S, u, e, SD(u, sp.p), "m")); S.ev.push({ k: "zone", R: u.R, C: u.C, r: sp.r, side: u.side }); } }); break;
     }
   }
@@ -431,13 +521,14 @@
       if (u.burnT > S.t) { dmg(S, u.burnBy, u, Math.min(u.maxhp * .02, 90) * DT, "t", { dot: 1 }); if (!u.alive) continue; }
       if (u.banT && S.t >= u.banT) { u.banT = S.t + 4; const a = alliesOf(S, u).sort((a, b) => a.hp / a.maxhp - b.hp / b.maxhp)[0]; if (a) heal(S, a, 120 * u.sp * SSTAR[u.star - 1], false, u); }
       u.atkCd -= DT; u.moveCd -= DT;
+      if (u.manaS && u.maxMana) u.mana = Math.min(u.maxMana, u.mana + u.manaS * DT);
       if (u.stunT > S.t || u.waitT > S.t) continue;
       if (u.spell && u.maxMana && u.mana >= u.maxMana) { u.mana = u.it.telecommande ? 20 : 0; cast(S, u);
         if (u.it.chargeur && (u.chg || 0) < 5) { u.chg = (u.chg || 0) + 1; u.as *= 1.2; } if (u.it.thermos) heal(S, u, u.maxhp * .1); if (u.it.cartes) u.amp += .1; continue; }
       let t = u.tgt; const foes = foesOf(S, u).filter(e => targetable(S, e));
       if (u.taunt && u.taunt.until > S.t && u.taunt.by.alive) t = u.taunt.by;
       else if (!t || !targetable(S, t)) { t = null; let bd = 99; for (const e of foes) { const d = dist(u, e) + S.rng() * .1; if (d < bd) { bd = d; t = e; } } }
-      u.tgt = t; if (!t) continue;
+      u.tgt = t; if (!t || u.still) continue;
       const d = dist(u, t);
       if (d <= u.range) { if (u.atkCd <= 0) attack(S, u, t); }
       else if (u.moveCd <= 0) { let best = null, bd = d; for (const [dr, dc] of NB[u.R & 1]) { const r = u.R + dr, c = u.C + dc; if (!inB(r, c) || S.grid[r + "," + c]) continue; const nd = hd(r, c, t.R, t.C) + S.rng() * .2; if (nd < bd) { bd = nd; best = [r, c]; } }
@@ -471,7 +562,7 @@
   // o : { event, humans: [{ uid, name }], me: index, bots: bool } pour le multijoueur
   function newGame(diff, seed, o) {
     o = o || {}; seed = seed || (Date.now() & 0x7fffffff); const rng = rng32(seed), names = BOTN.slice().sort(() => rng() - .5), AV = ["👑", "🦊", "🐸", "🐼", "🐙", "🦉", "🐷", "🐯", "🦄"];
-    EVT = o.event && EVENTS[o.event] ? o.event : null; SET = o.set === "mix" ? SETS[1].concat(SETS[2]) : SETS[o.set] || SETS[1];
+    EVT = o.event && EVENTS[o.event] ? o.event : null; SET = o.set === "mix" ? SETS[1].concat(SETS[2]) : SETS[o.set] || SETS[1]; CURT = o.set === 3 ? 3 : 0;
     G = { set: o.set || 1, duo: !!o.duo, teams: [0, 1, 2, 3].map(() => ({ hp: 100 })), diff, seed, rng, event: EVT, stat: { fights: 0, wins: 0 }, ri: 0, phase: "plan", players: [], pool: {}, out: 0, log: [], hist: {}, mp: !!o.humans };
     const H = o.humans || [{ name: "Toi" }]; H.forEach((h, i) => { const p = newPlayer(i, h.name, false); p.uid = h.uid || null; p.av = AV[i]; G.players.push(p); });
     if (!o.humans || o.bots !== false || o.duo) for (let i = H.length; i < 8; i++) { const p = newPlayer(i, names[i - 1], true); p.av = AV[i] || "🤖"; G.players.push(p); }
@@ -707,7 +798,7 @@
       } catch (err) { note(err.message); } };
   }
   const evOpts = sel => `<option value="">Aucun</option><option value="hasard" ${sel === "hasard" ? "selected" : ""}>🎲 Au hasard (toujours un événement)</option><option value="surprise" ${sel === "surprise" ? "selected" : ""}>❓ Surprise (un événement ou aucun)</option>` + Object.keys(EVENTS).map(k => `<option value="${k}" ${sel === k ? "selected" : ""}>${EVENTS[k][0]} ${EVENTS[k][1]}</option>`).join("");
-  const pickSet = v => v === "alea" ? (Math.random() < .5 ? 1 : 2) : ({ 1: 1, 2: 2 })[v] || "mix";
+  const pickSet = v => v === "alea" ? (Math.random() < .5 ? 1 : 2) : ({ 1: 1, 2: 2, 3: 3 })[v] || "mix";
   const pickEvent = v => v === "surprise" && Math.random() < .25 ? null : v === "hasard" || v === "surprise" ? Object.keys(EVENTS)[Math.floor(Math.random() * Object.keys(EVENTS).length)] : EVENTS[v] ? v : null;
   function mpRoom() { MP.sig = null; MP.gid = null; root.innerHTML = `<div class="ar-menu"><h1>⚔️ Salon</h1><div id="ar-room"><p>Connexion…</p></div></div>`;
     root.onclick = async e => { const a = e.target.closest("[data-act]"); if (!a) return;
@@ -729,7 +820,7 @@
     if (d.status !== "jeu") { if (G && G.mp && G.phase !== "over") { note("La partie a été arrêtée."); stopLoop(); clearInterval(UI.timer); G = null; mpRoom(); return; } if (G) return;
       const sig = JSON.stringify([d.players, d.host]); if (sig === MP.sig) return; MP.sig = sig; const b = root.querySelector("#ar-room"); if (!b) return;
       b.innerHTML = `<div class="ar-box"><h3>Joueurs (${d.players.length}/8)</h3>${d.players.map(p => `<div class="ar-lrow"><b>${esc(API.name(p.u))}${p.u === d.host ? " 👑" : ""}</b><span>${p.on ? "connecté" : "absent"}</span></div>`).join("")}</div>
-        ${MP.host ? `<div class="ar-box"><h3>Réglages</h3><label class="ar-opt">Cartes <select id="ar-mpset"><option value="1">Set 1 (58 unités)</option><option value="2">Set 2 (59 unités)</option><option value="mix">Les deux mélangés</option><option value="alea">🎲 Set au hasard (1 ou 2)</option></select></label><label class="ar-opt">Mode <select id="ar-mpmode"><option value="solo">Chacun pour soi</option><option value="duo">Duo (équipes de 2 dans l'ordre de la liste)</option></select></label><p class="ar-hint">En duo : le 1er et le 2e joueur font équipe, le 3e et le 4e, etc. Un joueur seul reçoit un bot comme coéquipier, et les places libres sont toujours tenues par des bots.</p><label class="ar-opt">Bots sur les places libres <select id="ar-mpbots"><option value="oui">Oui</option><option value="non">Non</option></select></label><label class="ar-opt">Difficulté des bots <select id="ar-mpdiff"><option value="facile">Facile</option><option value="normal" selected>Normal</option><option value="difficile">Difficile</option><option value="variable">🎲 Variable (une difficulté par bot)</option></select></label><label class="ar-opt">Événement <select id="ar-mpev">${evOpts("hasard")}</select></label></div>
+        ${MP.host ? `<div class="ar-box"><h3>Réglages</h3><label class="ar-opt">Cartes <select id="ar-mpset"><option value="1">Set 1 (58 unités)</option><option value="2">Set 2 (59 unités)</option>${API.admin ? `<option value="3">🔒 Set 3 (65 unités, admins)</option>` : ""}<option value="mix">Sets 1 et 2 mélangés</option><option value="alea">🎲 Set au hasard (1 ou 2)</option></select></label><label class="ar-opt">Mode <select id="ar-mpmode"><option value="solo">Chacun pour soi</option><option value="duo">Duo (équipes de 2 dans l'ordre de la liste)</option></select></label><p class="ar-hint">En duo : le 1er et le 2e joueur font équipe, le 3e et le 4e, etc. Un joueur seul reçoit un bot comme coéquipier, et les places libres sont toujours tenues par des bots.</p><label class="ar-opt">Bots sur les places libres <select id="ar-mpbots"><option value="oui">Oui</option><option value="non">Non</option></select></label><label class="ar-opt">Difficulté des bots <select id="ar-mpdiff"><option value="facile">Facile</option><option value="normal" selected>Normal</option><option value="difficile">Difficile</option><option value="variable">🎲 Variable (une difficulté par bot)</option></select></label><label class="ar-opt">Événement <select id="ar-mpev">${evOpts("hasard")}</select></label></div>
         <div class="ar-row"><button class="ar-b big go" data-act="mpstart">Lancer la partie</button><button class="ar-b" data-act="mpquit">Fermer le salon</button></div>` : `<p>En attente de l'hôte…</p><div class="ar-row"><button class="ar-b" data-act="mpquit">Quitter le salon</button></div>`}`; }
   }
   function mpBegin(s) {
@@ -808,7 +899,7 @@
       ${(() => { const sv = loadSave(); if (!sv || sv.mp) return ""; const r = sv.G.ri, st = r < 3 ? 1 : 2 + Math.floor((r - 3) / 7), k = r < 3 ? r + 1 : (r - 3) % 7 + 1; return `<div class="ar-box ar-resume"><h3>Partie en cours</h3><p>${sv.G.duo ? "Duo" : "Solo"} · manche ${st}-${k} · ❤️ ${Math.max(0, sv.G.players[sv.G.mei].hp)}</p><button class="ar-b big go" data-act="resume">▶ Reprendre</button></div>`; })()}
       <div class="ar-box"><h3>Solo contre 7 bots</h3>
         <div class="ar-diff"><span>Difficulté :</span>${[["facile", "Facile"], ["normal", "Normal"], ["difficile", "Difficile"], ["variable", "🎲 Variable"]].map(([k, l]) => `<button class="ar-b ${k === "normal" ? "on" : ""}" data-diff="${k}">${l}</button>`).join("")}</div><p class="ar-hint">Variable : chaque bot a sa propre difficulté, tirée au hasard.</p>
-        <label class="ar-opt">Cartes <select id="ar-set"><option value="1">Set 1 (58 unités)</option><option value="2">Set 2 (59 unités)</option><option value="mix">Les deux mélangés</option><option value="alea">🎲 Set au hasard (1 ou 2)</option></select></label>
+        <label class="ar-opt">Cartes <select id="ar-set"><option value="1">Set 1 (58 unités)</option><option value="2">Set 2 (59 unités)</option>${API.admin ? `<option value="3">🔒 Set 3 (65 unités, admins)</option>` : ""}<option value="mix">Sets 1 et 2 mélangés</option><option value="alea">🎲 Set au hasard (1 ou 2)</option></select></label>
         <label class="ar-opt">Mode <select id="ar-mode"><option value="solo">Chacun pour soi</option><option value="duo">Duo : toi et un bot contre 3 équipes</option></select></label>
         <label class="ar-opt">Événement <select id="ar-ev">${evOpts("")}</select></label>
         <button class="ar-b big go" data-act="start">Jouer en solo</button></div>
@@ -833,7 +924,7 @@
       <p><b>Fragments :</b> une partie d'au moins 10 manches rapporte des fragments. La victoire vaut 250 contre des bots faciles, 500 normaux, 750 difficiles, et 1000 s'il y a d'autres joueurs en face ; les autres places en touchent une part (68 %, 48 %, 36 %… ; en duo 60 %, 32 %, 16 %).</p>
       <p><b>Duo :</b> deux joueurs partagent les mêmes PV. Chacun mène son combat ; si tu gagnes le tien, tes survivants partent en renfort chez ton coéquipier. Tu peux aussi lui donner une unité par manche (bouton 🎁 sur sa fiche).</p>
       <p><b>Mort subite :</b> après 30 s de combat, les dégâts augmentent et les soins diminuent jusqu'à ce qu'un camp tombe.</p>
-      <h3>Synergies</h3>${Object.keys(TR).map(k => `<p>${TICO(k)} <b>${TNAME(k)}</b> (${TR[k].t.join(" / ")}) : ${TR[k].t.map((t, i) => TR[k].d(TR[k].v[i])).slice(-1)[0].replace(/\d+(\.\d+)?/g, m => m)}</p>`).join("")}
+      <h3>Synergies</h3>${Object.keys(TR).filter(k => CLS[k] || k === "chat" && CURT !== 3 || SET.some(n => UN[n].o.includes(k))).map(k => `<p>${TICO(k)} <b>${TNAME(k)}</b> (${TRof(k).t.join(" / ")}) : ${TRof(k).t.map((t, i) => TRof(k).d(TRof(k).v[i])).slice(-1)[0].replace(/\d+(\.\d+)?/g, m => m)}</p>`).join("")}
       <button class="ar-b" data-act="tuto">🎓 Revoir le tutoriel</button>
       <p class="ar-hint">🎵 Musiques libres de droits : Infraction – No Copyright Music, MOKKA et Cold Cinema.</p>
       <button class="ar-b" data-x>Fermer</button></div>`;
@@ -859,7 +950,7 @@
     $("#ar-round").innerHTML = h; $("#ar-me").innerHTML = `<span class="ar-av">${G.me.av}</span><span>❤️ <b>${Math.max(0, G.me.hp)}</b></span>${G.event ? `<button class="ar-evc" data-act="event">${EVENTS[G.event][0]} ${EVENTS[G.event][1]}</button>` : ""}${(G.me.aug || []).length ? `<button class="ar-evc aug" data-act="augs">${G.me.aug.map(k => AUG[k][0]).join("")}</button>` : ""}`; }
   function drawTraits() {
     const cnt = traitsOf(G.me.board, G.me.aug), keys = Object.keys(cnt).sort((a, b) => (tier(b, cnt[b]) - tier(a, cnt[a])) || cnt[b] - cnt[a]);
-    $("#ar-traits").innerHTML = keys.map(k => { const ti = tier(k, cnt[k]), T = TR[k];
+    $("#ar-traits").innerHTML = keys.map(k => { const ti = tier(k, cnt[k]), T = TRof(k);
       return `<button class="ar-tr ${ti >= 0 ? "on t" + Math.min(2, ti + (T.t.length < 3 ? 1 : 0)) : ""}" data-trait="${k}"><span class="ar-tri">${TICO(k)}</span><b>${cnt[k]}</b><span class="ar-trx"><strong>${TNAME(k)}</strong><em>${T.t.map((t, i) => `<i class="${i <= ti ? "ok" : ""}">${t}</i>`).join(" › ")}</em><small>${ti >= 0 ? T.d(T.v[ti]) : `Encore ${T.t[0] - cnt[k]} pour l'activer.`}</small></span></button>`; }).join("") || `<span class="ar-hint">Place des unités du même univers ou de la même classe pour activer des synergies.</span>`;
   }
   function drawBoard() {
@@ -982,7 +1073,7 @@
   function saveGame() { if (!G || G.phase === "over" || typeof localStorage === "undefined") return; try { const o = Object.assign({}, G, { rng: undefined, me: undefined, fights: undefined, rs: G.rng.a, mei: G.me.id, phase: "plan" }); localStorage.setItem(SAVEK, JSON.stringify({ t: Date.now(), mp: !!G.mp, gid: G.mp ? MP.gid : null, uid: API && API.uid, G: o })); } catch (_) {} }
   function loadSave() { try { const o = JSON.parse(localStorage.getItem(SAVEK) || "null"); return o && o.G && Date.now() - o.t < 864e5 && (!API || !o.uid || o.uid === API.uid) ? o : null; } catch (_) { return null; } }
   function clearSave() { try { localStorage.removeItem(SAVEK); } catch (_) {} }
-  function restore(sv) { G = sv.G; G.rng = rng32(G.rs); G.me = G.players[G.mei]; G.fights = null; G.phase = "plan"; EVT = G.event && EVENTS[G.event] ? G.event : null; SET = G.set === "mix" ? SETS[1].concat(SETS[2]) : SETS[G.set] || SETS[1]; G.players.forEach(p => { p.choices = p.choices || []; p.aug = p.aug || []; }); UI.sel = UI.info = UI.selItem = null; UI.sim = UI.view = null; build0(); }
+  function restore(sv) { G = sv.G; G.rng = rng32(G.rs); G.me = G.players[G.mei]; G.fights = null; G.phase = "plan"; EVT = G.event && EVENTS[G.event] ? G.event : null; SET = G.set === "mix" ? SETS[1].concat(SETS[2]) : SETS[G.set] || SETS[1]; CURT = G.set === 3 ? 3 : 0; G.players.forEach(p => { p.choices = p.choices || []; p.aug = p.aug || []; }); UI.sel = UI.info = UI.selItem = null; UI.sim = UI.view = null; build0(); }
   /* ---------- fin de partie : enregistrement, fragments ---------- */
   async function logGame() {
     if (!G || G.logged || !API || !API.rpc) return; G.logged = true; clearSave(); const L = (G.me.place === 1 ? G.me.board : G.lastBoard || []).slice(0, 12).map(x => ({ n: x.n, s: x.star, it: x.it || [] }));
@@ -1100,7 +1191,7 @@
   }
   function traitPop(k) {
     const cnt = traitsOf(G.me.board, G.me.aug)[k] || 0, ti = tier(k, cnt), m = document.createElement("div"); m.className = "ar-modal";
-    m.innerHTML = `<div class="ar-sheet"><h2>${TICO(k)} ${TNAME(k)} <small>${cnt} sur le plateau</small></h2>${TR[k].t.map((t, i) => `<p class="${i === ti ? "ar-on" : ""}"><b>${t}</b> : ${TR[k].d(TR[k].v[i])}</p>`).join("")}
+    m.innerHTML = `<div class="ar-sheet"><h2>${TICO(k)} ${TNAME(k)} <small>${cnt} sur le plateau</small></h2>${TRof(k).t.map((t, i) => `<p class="${i === ti ? "ar-on" : ""}"><b>${t}</b> : ${TRof(k).d(TRof(k).v[i])}</p>`).join("")}
       <p class="ar-hint">Unités : ${SET.filter(n => UN[n].o.includes(k) || UN[n].cl === k).map(n => `${esc(n)} (${UN[n].c})`).join(", ")}</p><button class="ar-b" data-x>Fermer</button></div>`;
     root.appendChild(m); m.onclick = e => { if (e.target === m || e.target.closest("[data-x]")) m.remove(); };
   }
