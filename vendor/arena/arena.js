@@ -49,7 +49,7 @@
   U("Jean-Luc Mélenchon", 2, "mag", ["pol"], { k: "line", p: 1.4, n: "Discours", t: "Dégâts à tous les ennemis sur une ligne." });
   U("Emmanuel Macron", 3, "str", ["pol"], { k: "shield", who: "all", p: 1, m: 60, d: 5, n: "En même temps", t: "Donne un bouclier à toute l'équipe." });
   U("Charles de Gaulle", 4, "col", ["pol"], { k: "taunt", r: 2, d: 4, v: 60, m: 60, n: "L'Appel", t: "Provoque les ennemis proches et donne de l'armure à toute l'équipe." });
-  U("Napoléon Ier", 5, "str", ["pol"], { k: "summon", cnt: [2, 3, 5], hp: 650, ad: 65, m: 70, sn: "Grognard", n: "Grande Armée", t: "Invoque des soldats de la Garde." });
+  U("Napoléon Ier", 5, "str", ["pol"], { k: "summon", cnt: [2, 3, 5], hp: 650, ad: 65, m: 70, sn: "Grognard", art: "Garde impériale", n: "Grande Armée", t: "Invoque des soldats de la Garde." });
   U("Ghostface", 1, "ass", ["hor"], { k: "strike", p: 1.3, phys: 1, n: "Coup de couteau", t: "Un coup critique garanti." });
   U("Freddy Fazbear", 2, "bag", ["hor", "jv"], { k: "aoeS", p: .5, r: 1, stun: 1.2, n: "Jumpscare", t: "Effraie et étourdit les ennemis adjacents." });
   U("Slender Man", 3, "mag", ["hor"], { k: "far", p: 2, stun: 2.5, n: "Apparition", t: "Immobilise l'ennemi le plus éloigné et le blesse." });
@@ -98,9 +98,9 @@
   // set 1 : compléments pour atteindre 65 unités
   U("Marine Le Pen", 5, "sou", ["pol"], { k: "heal", who: "all", p: .6, sh: .6, m: 80, n: "Rassemblement", t: "Soigne et protège toute l'équipe." });
   U("Philippe Poutou", 2, "tir", ["pol"], { k: "strike", p: 1, weaken: .3, d: 4, n: "Punchline", t: "Une réplique qui blesse sa cible et réduit ses dégâts de 30 % pendant 4 s." });
-  U("SCP-049 · Le Docteur de la Peste", 4, "str", ["hor"], { k: "summon", cnt: [1, 1, 2], hp: 750, ad: 65, m: 70, sn: "SCP-049-2", n: "Le remède", t: "« Soigne » une victime : un mort-vivant se bat pour lui." });
+  U("SCP-049 · Le Docteur de la Peste", 4, "str", ["hor"], { k: "summon", cnt: [1, 1, 2], hp: 750, ad: 65, m: 70, sn: "SCP-049-2", art: "Zombie", n: "Le remède", t: "« Soigne » une victime : un mort-vivant se bat pour lui." });
   U("Pépé le putois", 1, "tir", ["da"], { k: "aoeT", p: .5, r: 1, slow: .3, d: 4, n: "Parfum", t: "Son odeur blesse sa cible et ses voisins, et ralentit leurs attaques de 30 %." });
-  U("Grand Schtroumpf", 5, "str", ["da"], { k: "summon", cnt: [3, 3, 4], hp: 400, ad: 48, m: 70, sn: "Schtroumpf", arts: ["Les Schtroumpfs", "Schtroumpfette"], n: "Schtroumpfez-les !", t: "Appelle les Schtroumpfs du village à la rescousse." });
+  U("Grand Schtroumpf", 5, "str", ["da"], { k: "summon", cnt: [3, 3, 4], hp: 400, ad: 48, m: 70, sn: "Schtroumpf", art: "Les Schtroumpfs", egg: ["Schtroumpfette", .02], n: "Schtroumpfez-les !", t: "Appelle les Schtroumpfs du village à la rescousse." });
   U("Ironmouse", 4, "sou", ["vid"], { k: "buff", who: "all", s: "as", v: .3, d: 5, m: 50, n: "Subathon", t: "Toute l'équipe gagne 30 % de vitesse d'attaque pendant 5 s." });
   U("El Risitas", 5, "sou", ["meme"], { k: "stunall", p: .3, stun: [1.2, 1.6, 2.5], m: 80, n: "Fou rire", t: "Son rire est contagieux : tous les ennemis sont pliés en deux, incapables d'agir." });
   // --- Set 2 ---
@@ -121,7 +121,7 @@
   U("Kim Jong-un", 2, "tir", ["pol"], { k: "aoeT", p: .75, r: 1, n: "Missile", t: "Un missile explose sur sa cible et ses voisins." });
   U("Benyamin Netanyahou", 3, "col", ["pol"], { k: "shield", who: "all", p: .6, d: 5, m: 80, n: "Dôme de fer", t: "Protège toute l'équipe avec un bouclier." });
   U("Xi Jinping", 3, "str", ["pol"], { k: "buff", who: "all", s: "armor", v: 30, d: 6, m: 60, n: "Grande Muraille", t: "Toute l'équipe gagne 30 d'armure et de résistance pendant 6 s." });
-  U("Donald Trump", 4, "str", ["pol"], { k: "summon", cnt: [1, 1, 2], hp: 1500, ad: 30, m: 60, sn: "Mur", n: "Le Mur", t: "Fait construire un mur très résistant devant lui." });
+  U("Donald Trump", 4, "str", ["pol"], { k: "summon", cnt: [1, 1, 2], hp: 1500, ad: 30, m: 60, sn: "Mur", art: "Mur frontalier États-Unis–Mexique", n: "Le Mur", t: "Fait construire un mur très résistant devant lui." });
   U("Vladimir Poutine", 4, "bag", ["pol"], { k: "strike", p: 1.5, stun: 1.2, n: "Prise de judo", t: "Projette sa cible : dégâts et étourdissement." });
   U("Adolf Hitler", 4, "str", ["pol"], { k: "buff", who: "all", s: "as", v: .35, d: 5, m: 50, n: "Discours", t: "Toute l'équipe gagne 35 % de vitesse d'attaque pendant 5 s." });
   U("Chucky", 1, "ass", ["hor"], { k: "strike", p: .5, dot: .9, d: 4, n: "Coup de couteau", t: "Poignarde sa cible, qui saigne pendant 4 s." });
@@ -178,7 +178,7 @@
   U("Leatherface", 2, "bag", ["hor"], { k: "aoeS", p: .4, r: 1, phys: 1, n: "Tronçonneuse", t: "Tranche tous les ennemis adjacents." });
   U("Hannibal Lecter", 3, "ass", ["hor"], { k: "strike", p: 1.5, tp: "low", n: "Dîner", t: "Surgit sur l'ennemi le plus faible." });
   U("Jill Valentine", 3, "tir", ["hor"], { k: "aoeT", p: .75, r: 1, n: "Lance-grenades", t: "Une grenade explose sur sa cible et ses voisins." });
-  U("Liche", 4, "mag", ["hor"], { k: "summon", cnt: [2, 2, 3], hp: 520, ad: 55, m: 70, sn: "Squelette", n: "Armée des morts", t: "Relève des squelettes pour se battre à sa place." });
+  U("Liche", 4, "mag", ["hor"], { k: "summon", cnt: [2, 2, 3], hp: 520, ad: 55, m: 70, sn: "Squelette", art: "Squelette", n: "Armée des morts", t: "Relève des squelettes pour se battre à sa place." });
   U("Pinhead", 4, "str", ["hor"], { k: "multi", cnt: 3, p: 1, stun: 1.5, m: 70, n: "Chaînes", t: "Des chaînes immobilisent et blessent 3 ennemis." });
   U("Ben Drowned", 4, "bag", ["hor"], { k: "strike", p: 1.4, untarg: 1.5, n: "Glitch", t: "Frappe, puis disparaît dans un glitch : inciblable 1,5 s." });
   U("Kayako Saeki", 4, "ass", ["hor"], { k: "strike", p: 1.6, tp: "low", stun: 1, n: "Râle", t: "Rampe jusqu'à l'ennemi le plus faible : dégâts et étourdissement." });
@@ -219,7 +219,7 @@
   U("Stitch", 3, "ass", ["disney"], { k: "aoeS", p: 1, r: 1, n: "Expérience 626", t: "Se déchaîne sur tous les ennemis adjacents." });
   U("Sulli", 3, "col", ["disney"], { k: "aoeS", p: 1.1, r: 1, stun: 1.2, n: "Rugissement", t: "Terrifie et étourdit les ennemis adjacents." });
   U("Baymax", 3, "sou", ["disney"], { k: "heal", who: "low", p: 1.4, sh: .6, n: "Assistant de santé", t: "Soigne fortement et protège l'allié le plus blessé." });
-  U("Mickey Mouse", 4, "str", ["disney"], { k: "summon", cnt: [2, 2, 3], hp: 450, ad: 45, m: 70, sn: "Balai enchanté", n: "L'Apprenti sorcier", t: "Anime des balais qui se battent pour lui." });
+  U("Mickey Mouse", 4, "str", ["disney"], { k: "summon", cnt: [2, 2, 3], hp: 450, ad: 45, m: 70, sn: "Balai enchanté", art: "Balai", n: "L'Apprenti sorcier", t: "Anime des balais qui se battent pour lui." });
   U("Merlin", 4, "mag", ["disney"], { k: "aoeT", p: 1.4, r: 2, slow: .3, d: 4, n: "Higitus Figitus", t: "Un sort de zone qui blesse et ralentit les attaques de 30 %." });
   U("Mufasa", 4, "bag", ["disney"], { k: "aoeS", p: 1, r: 2, stun: 1, n: "Rugissement du roi", t: "Étourdit et blesse dans une large zone." });
   U("Empereur Zurg", 5, "tir", ["disney"], { k: "line", p: 1.25, n: "Canon ionique", t: "Un rayon qui traverse toute une ligne." });
@@ -258,13 +258,13 @@
     "Bête du Gévaudan": { t: 1, hp: 4200, ad: 125, as: .9, ar: 30, ex: { ls: .2 }, adds: [["Loup", 3]], s: { k: "strike", p: 1.4, tp: "low", n: "Embuscade" }, d: "Bondit sur ton unité la plus faible et se soigne en mordant. Trois loups chassent avec elle." },
     "Wendigo": { t: 1, hp: 5600, ad: 120, as: .75, ar: 35, s: { k: "stunall", p: .5, stun: [1, 1, 1], pas: "enrage", n: "Hurlement" }, d: "Son hurlement étourdit toute ton équipe. Dès qu'il est blessé, il s'enrage." },
     "Monstre du loch Ness": { t: 2, hp: 8800, ad: 135, as: .7, ar: 55, ex: { regen: .008 }, s: { k: "aoeT", p: 1.2, r: 2, stun: 1, untarg: 1.5, n: "Raz-de-marée" }, d: "Un raz-de-marée frappe une large zone, puis il plonge et devient inciblable. Il se régénère en continu." },
-    "Hollandais volant": { t: 2, hp: 12500, ad: 150, as: .7, ar: 45, rg: 4, s: { k: "summon", cnt: [3, 3, 3], hp: 800, ad: 60, sn: "Matelot maudit", n: "Équipage maudit" }, d: "Tire de loin et appelle sans cesse des matelots maudits. Tue-le vite." },
+    "Hollandais volant": { t: 2, hp: 12500, ad: 150, as: .7, ar: 45, rg: 4, s: { k: "summon", cnt: [3, 3, 3], hp: 800, ad: 60, sn: "Matelot maudit", art: "Davy Jones", n: "Équipage maudit" }, d: "Tire de loin et appelle sans cesse des matelots maudits. Tue-le vite." },
     "Kurama": { t: 2, hp: 11500, ad: 150, as: .75, ar: 50, s: { k: "line", p: 1.8, pas: "ramp", n: "Bijūdama" }, d: "Son orbe traverse toute une ligne : ne mets pas tes unités en file. Plus il est blessé, plus il frappe fort." },
     "Ketheric Thorm": { t: 2, hp: 7200, ad: 130, as: .7, ar: 60, s: { k: "multi", cnt: 3, p: 1.1, drain: 1, pas: "revive", n: "Drain nécrotique" }, d: "Draine la vie de trois unités à la fois et se relève une fois après sa mort." },
     "Flowey": { t: 2, hp: 9500, ad: 130, as: .9, ar: 40, rg: 4, ex: { dodge: .2 }, s: { k: "multi", cnt: 5, rndT: 1, p: .8, n: "Pétales" }, d: "Mitraille cinq unités au hasard et esquive une attaque sur cinq." },
     "Ender Dragon": { t: 3, hp: 17000, ad: 180, as: .75, ar: 60, rg: 2, ex: { regen: .01 }, s: { k: "line", p: 1.4, dot: 2, d: 4, n: "Souffle du dragon" }, d: "Son souffle traverse une ligne et brûle pendant 4 s. Ses cristaux le soignent en continu : il faut beaucoup de dégâts." },
     "Fatalis": { t: 3, hp: 15000, ad: 170, as: .7, ar: 70, s: { k: "stunall", p: 1.1, stun: [.8, .8, .8], n: "Brasier" }, d: "Embrase tout le plateau : toute ton équipe est blessée et étourdie. Les soins et les boucliers d'équipe sont précieux." },
-    "Seigneur de la Lune": { t: 3, hp: 21000, ad: 185, as: .75, ar: 55, rg: 4, s: { k: "summon", cnt: [2, 2, 2], hp: 2300, ad: 110, sn: "Œil véritable", n: "Yeux véritables" }, d: "Frappe de loin et invoque des yeux véritables très résistants." },
+    "Seigneur de la Lune": { t: 3, hp: 21000, ad: 185, as: .75, ar: 55, rg: 4, s: { k: "summon", cnt: [2, 2, 2], hp: 2300, ad: 110, sn: "Œil véritable", art: "Œil véritable de Cthulhu", n: "Yeux véritables" }, d: "Frappe de loin et invoque des yeux véritables très résistants." },
     "SCP-682": { t: 3, hp: 16000, ad: 180, as: .8, ar: 65, ex: { regen: .015 }, s: { k: "strike", p: 1.8, pas: "revive", n: "Adaptation" }, d: "Indestructible : il se régénère très vite et se relève une fois. Les brûlures et l'anti-soin aident énormément." },
   };
   // objets : 8 composants, 36 fusions
@@ -511,8 +511,8 @@
       case "mana": within(S, allies, u.R, u.C, sp.r).forEach(a => { if (a !== u && a.maxMana) a.mana = Math.min(a.maxMana, a.mana + sp.v * u.star); }); break;
       case "taunt": within(S, foes, u.R, u.C, sp.r).forEach(e => { e.taunt = { by: u, until: S.t + sp.d }; }); allies.forEach(a => a.buffs.push({ s: "armor", v: sp.v * u.star, until: S.t + 5 })); u.shield += SD(u, .8); break;
       case "summon": { const n = sp.cnt[u.star - 1]; for (let i = 0; i < n; i++) { const f = freeNear(S, u.R + (u.side ? 1 : -1), u.C + i - 1, u); if (!f) break;
-          const raw = sp.clone ? { hp: u.maxhp * sp.clone, ad: u.ad * sp.clone, as: u.as, rg: 1, ar: 20, art: u.n } : { hp: sp.hp * SSTAR[u.star - 1], ad: sp.ad * SSTAR[u.star - 1], as: .7, rg: 1, ar: 25, art: sp.arts ? sp.arts[i % sp.arts.length] : u.n };
-          const s = mkUnit(S, u.side, { n: sp.arts && sp.arts[i % sp.arts.length] === "Schtroumpfette" ? "Schtroumpfette" : sp.sn, raw, r: 0, c: 0 }); s.R = f[0]; s.C = f[1]; s.hp = s.maxhp; s.sum = 1; s.owner = u; s.amp = u.amp; S.grid[f[0] + "," + f[1]] = s; S.units.push(s); S.ev.push({ k: "spawn", u: s.uid }); } break; }
+          const raw = sp.clone ? { hp: u.maxhp * sp.clone, ad: u.ad * sp.clone, as: u.as, rg: 1, ar: 20, art: u.n } : { hp: sp.hp * SSTAR[u.star - 1], ad: sp.ad * SSTAR[u.star - 1], as: .7, rg: 1, ar: 25, art: sp.art || u.n }; const egg = sp.egg && S.rng() < sp.egg[1]; if (egg) raw.art = sp.egg[0];
+          const s = mkUnit(S, u.side, { n: egg ? sp.egg[0] : sp.sn, raw, r: 0, c: 0 }); s.R = f[0]; s.C = f[1]; s.hp = s.maxhp; s.sum = 1; s.owner = u; s.amp = u.amp; S.grid[f[0] + "," + f[1]] = s; S.units.push(s); S.ev.push({ k: "spawn", u: s.uid }); } break; }
       case "transform": if (!u.tf) { u.tf = 1; const h = sp.hp * SSTAR[u.star - 1]; u.maxhp += h; u.hp += h; u.buffs.push({ s: "ad", v: sp.ad, until: 999 }); u.big = 1; } else heal(S, u, u.maxhp * .12); break;
       case "stunall": foes.forEach(e => applyHit(S, u, e, sp, SD(u, sp.p))); S.ev.push({ k: "flash", side: u.side }); break;
       case "half": foes.slice().sort((a, b) => b.hp - a.hp).slice(0, sp.cnt).forEach(e => { dmg(S, u, e, e.hp * (e.boss ? .12 : sp.pc[u.star - 1]), "t"); S.ev.push({ k: "shot", a: u.uid, b: e.uid }); }); S.ev.push({ k: "flash", side: u.side }); break;
