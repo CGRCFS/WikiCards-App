@@ -156,7 +156,7 @@
   U("Elmer Fudd", 2, "tir", ["da"], { k: "strike", p: .7, phys: 1, n: "Chasse au lapin", t: "Un coup de fusil critique garanti." });
   U("Casper le gentil fantôme", 2, "sou", ["da"], { k: "heal", who: "low", p: .8, sh: .7, n: "Gentil fantôme", t: "Soigne et protège l'allié le plus blessé." });
   U("Scooby-Doo", 3, "sou", ["da"], { k: "mana", r: 2, v: 30, m: 60, n: "Scooby Snacks", t: "Donne 30 mana aux alliés proches." });
-  U("Jimmy Neutron", 4, "str", ["da"], { k: "summon", cnt: [1, 1, 2], hp: 800, ad: 75, m: 70, sn: "Goddard", n: "Goddard", t: "Appelle son chien robot Goddard." });
+  U("Jimmy Neutron", 4, "str", ["da"], { k: "summon", cnt: [1, 1, 2], hp: 800, ad: 75, m: 70, sn: "Goddard", art: "Goddard", n: "Goddard", t: "Appelle son chien robot Goddard." });
   U("Deadpool", 2, "bag", ["hero"], { k: "heal", who: "self", p: 1.6, n: "Facteur guérisseur", t: "Se soigne fortement." });
   U("Bane", 3, "col", ["hero"], { k: "transform", hp: 450, ad: .3, n: "Venin", t: "S'injecte du Venin : gagne beaucoup de PV et de dégâts." });
   U("Professeur Xavier", 3, "sou", ["hero"], { k: "multi", cnt: 2, p: .6, stun: 1.5, n: "Cerebro", t: "Paralyse l'esprit de 2 ennemis." });
@@ -215,7 +215,7 @@
   U("Le Petit Grille-pain courageux", 1, "col", ["disney"], { k: "aoeS", p: .6, r: 1, n: "Toasts brûlants", t: "Projette des toasts sur les ennemis adjacents." });
   U("Judy Hopps", 1, "tir", ["disney"], { k: "strike", p: .6, stun: .5, n: "Fléchette", t: "Une fléchette tranquillisante étourdit sa cible." });
   U("Winnie l'ourson", 2, "col", ["disney"], { k: "heal", who: "self", p: 1.2, selfArmor: 12, n: "Pot de miel", t: "Mange du miel : se soigne et gagne de l'armure." });
-  U("Jasmine", 2, "str", ["disney"], { k: "summon", cnt: [1, 1, 1], hp: 520, ad: 60, m: 70, sn: "Rajah", n: "Rajah", t: "Appelle son tigre Rajah." });
+  U("Jasmine", 2, "str", ["disney"], { k: "summon", cnt: [1, 1, 1], hp: 520, ad: 60, m: 70, sn: "Rajah", art: "Rajah", n: "Rajah", t: "Appelle son tigre Rajah." });
   U("Stitch", 3, "ass", ["disney"], { k: "aoeS", p: 1, r: 1, n: "Expérience 626", t: "Se déchaîne sur tous les ennemis adjacents." });
   U("Sulli", 3, "col", ["disney"], { k: "aoeS", p: 1.1, r: 1, stun: 1.2, n: "Rugissement", t: "Terrifie et étourdit les ennemis adjacents." });
   U("Baymax", 3, "sou", ["disney"], { k: "heal", who: "low", p: 1.4, sh: .6, n: "Assistant de santé", t: "Soigne fortement et protège l'allié le plus blessé." });
