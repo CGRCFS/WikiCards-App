@@ -100,7 +100,7 @@
   U("Philippe Poutou", 2, "tir", ["pol"], { k: "strike", p: 1, weaken: .3, d: 4, n: "Punchline", t: "Une réplique qui blesse sa cible et réduit ses dégâts de 30 % pendant 4 s." });
   U("SCP-049 · Le Docteur de la Peste", 4, "str", ["hor"], { k: "summon", cnt: [1, 1, 2], hp: 750, ad: 65, m: 70, sn: "SCP-049-2", n: "Le remède", t: "« Soigne » une victime : un mort-vivant se bat pour lui." });
   U("Pépé le putois", 1, "tir", ["da"], { k: "aoeT", p: .5, r: 1, slow: .3, d: 4, n: "Parfum", t: "Son odeur blesse sa cible et ses voisins, et ralentit leurs attaques de 30 %." });
-  U("Grand Schtroumpf", 5, "str", ["da"], { k: "summon", cnt: [3, 3, 4], hp: 400, ad: 48, m: 70, sn: "Schtroumpf", n: "Schtroumpfez-les !", t: "Appelle les Schtroumpfs du village à la rescousse." });
+  U("Grand Schtroumpf", 5, "str", ["da"], { k: "summon", cnt: [3, 3, 4], hp: 400, ad: 48, m: 70, sn: "Schtroumpf", arts: ["Les Schtroumpfs", "Schtroumpfette"], n: "Schtroumpfez-les !", t: "Appelle les Schtroumpfs du village à la rescousse." });
   U("Ironmouse", 4, "sou", ["vid"], { k: "buff", who: "all", s: "as", v: .3, d: 5, m: 50, n: "Subathon", t: "Toute l'équipe gagne 30 % de vitesse d'attaque pendant 5 s." });
   U("El Risitas", 5, "sou", ["meme"], { k: "stunall", p: .3, stun: [1.2, 1.6, 2.5], m: 80, n: "Fou rire", t: "Son rire est contagieux : tous les ennemis sont pliés en deux, incapables d'agir." });
   // --- Set 2 ---
@@ -511,8 +511,8 @@
       case "mana": within(S, allies, u.R, u.C, sp.r).forEach(a => { if (a !== u && a.maxMana) a.mana = Math.min(a.maxMana, a.mana + sp.v * u.star); }); break;
       case "taunt": within(S, foes, u.R, u.C, sp.r).forEach(e => { e.taunt = { by: u, until: S.t + sp.d }; }); allies.forEach(a => a.buffs.push({ s: "armor", v: sp.v * u.star, until: S.t + 5 })); u.shield += SD(u, .8); break;
       case "summon": { const n = sp.cnt[u.star - 1]; for (let i = 0; i < n; i++) { const f = freeNear(S, u.R + (u.side ? 1 : -1), u.C + i - 1, u); if (!f) break;
-          const raw = sp.clone ? { hp: u.maxhp * sp.clone, ad: u.ad * sp.clone, as: u.as, rg: 1, ar: 20, art: u.n } : { hp: sp.hp * SSTAR[u.star - 1], ad: sp.ad * SSTAR[u.star - 1], as: .7, rg: 1, ar: 25, art: u.n };
-          const s = mkUnit(S, u.side, { n: sp.sn, raw, r: 0, c: 0 }); s.R = f[0]; s.C = f[1]; s.hp = s.maxhp; s.sum = 1; s.owner = u; s.amp = u.amp; S.grid[f[0] + "," + f[1]] = s; S.units.push(s); S.ev.push({ k: "spawn", u: s.uid }); } break; }
+          const raw = sp.clone ? { hp: u.maxhp * sp.clone, ad: u.ad * sp.clone, as: u.as, rg: 1, ar: 20, art: u.n } : { hp: sp.hp * SSTAR[u.star - 1], ad: sp.ad * SSTAR[u.star - 1], as: .7, rg: 1, ar: 25, art: sp.arts ? sp.arts[i % sp.arts.length] : u.n };
+          const s = mkUnit(S, u.side, { n: sp.arts && sp.arts[i % sp.arts.length] === "Schtroumpfette" ? "Schtroumpfette" : sp.sn, raw, r: 0, c: 0 }); s.R = f[0]; s.C = f[1]; s.hp = s.maxhp; s.sum = 1; s.owner = u; s.amp = u.amp; S.grid[f[0] + "," + f[1]] = s; S.units.push(s); S.ev.push({ k: "spawn", u: s.uid }); } break; }
       case "transform": if (!u.tf) { u.tf = 1; const h = sp.hp * SSTAR[u.star - 1]; u.maxhp += h; u.hp += h; u.buffs.push({ s: "ad", v: sp.ad, until: 999 }); u.big = 1; } else heal(S, u, u.maxhp * .12); break;
       case "stunall": foes.forEach(e => applyHit(S, u, e, sp, SD(u, sp.p))); S.ev.push({ k: "flash", side: u.side }); break;
       case "half": foes.slice().sort((a, b) => b.hp - a.hp).slice(0, sp.cnt).forEach(e => { dmg(S, u, e, e.hp * (e.boss ? .12 : sp.pc[u.star - 1]), "t"); S.ev.push({ k: "shot", a: u.uid, b: e.uid }); }); S.ev.push({ k: "flash", side: u.side }); break;
