@@ -812,7 +812,7 @@
       } catch (err) { note(err.message); } };
   }
   const evOpts = sel => `<option value="">Aucun</option><option value="hasard" ${sel === "hasard" ? "selected" : ""}>🎲 Au hasard (toujours un événement)</option><option value="surprise" ${sel === "surprise" ? "selected" : ""}>❓ Surprise (un événement ou aucun)</option>` + Object.keys(EVENTS).map(k => `<option value="${k}" ${sel === k ? "selected" : ""}>${EVENTS[k][0]} ${EVENTS[k][1]}</option>`).join("");
-  const pickSet = v => v === "alea" ? (Math.random() < .5 ? 1 : 2) : ({ 1: 1, 2: 2, 3: 3 })[v] || "mix";
+  const pickSet = v => v === "alea" ? 1 + Math.floor(Math.random() * 3) : ({ 1: 1, 2: 2, 3: 3 })[v] || "mix";
   const pickEvent = v => v === "surprise" && Math.random() < .25 ? null : v === "hasard" || v === "surprise" ? Object.keys(EVENTS)[Math.floor(Math.random() * Object.keys(EVENTS).length)] : EVENTS[v] ? v : null;
   function mpRoom() { MP.sig = null; MP.gid = null; root.innerHTML = `<div class="ar-menu"><h1>⚔️ Salon</h1><div id="ar-room"><p>Connexion…</p></div></div>`;
     root.onclick = async e => { const a = e.target.closest("[data-act]"); if (!a) return;
@@ -834,7 +834,7 @@
     if (d.status !== "jeu") { if (G && G.mp && G.phase !== "over") { note("La partie a été arrêtée."); stopLoop(); clearInterval(UI.timer); G = null; mpRoom(); return; } if (G) return;
       const sig = JSON.stringify([d.players, d.host]); if (sig === MP.sig) return; MP.sig = sig; const b = root.querySelector("#ar-room"); if (!b) return;
       b.innerHTML = `<div class="ar-box"><h3>Joueurs (${d.players.length}/8)</h3>${d.players.map(p => `<div class="ar-lrow"><b>${esc(API.name(p.u))}${p.u === d.host ? " 👑" : ""}</b><span>${p.on ? "connecté" : "absent"}</span></div>`).join("")}</div>
-        ${MP.host ? `<div class="ar-box"><h3>Réglages</h3><label class="ar-opt">Cartes <select id="ar-mpset"><option value="1">Set 1 (65 unités)</option><option value="2">Set 2 (65 unités)</option>${API.admin ? `<option value="3">🔒 Set 3 (65 unités, admins)</option>` : ""}<option value="mix">Sets 1 et 2 mélangés</option><option value="alea">🎲 Set au hasard (1 ou 2)</option></select></label><label class="ar-opt">Mode <select id="ar-mpmode"><option value="solo">Chacun pour soi</option><option value="duo">Duo (équipes de 2 dans l'ordre de la liste)</option></select></label><p class="ar-hint">En duo : le 1er et le 2e joueur font équipe, le 3e et le 4e, etc. Un joueur seul reçoit un bot comme coéquipier, et les places libres sont toujours tenues par des bots.</p><label class="ar-opt">Bots sur les places libres <select id="ar-mpbots"><option value="oui">Oui</option><option value="non">Non</option></select></label><label class="ar-opt">Difficulté des bots <select id="ar-mpdiff"><option value="facile">Facile</option><option value="normal" selected>Normal</option><option value="difficile">Difficile</option><option value="variable">🎲 Variable (une difficulté par bot)</option></select></label><label class="ar-opt">Événement <select id="ar-mpev">${evOpts("hasard")}</select></label></div>
+        ${MP.host ? `<div class="ar-box"><h3>Réglages</h3><label class="ar-opt">Cartes <select id="ar-mpset"><option value="1">Set 1 (65 unités)</option><option value="2">Set 2 (65 unités)</option><option value="3">Set 3 (65 unités)</option><option value="mix">Sets 1 et 2 mélangés</option><option value="alea">🎲 Set au hasard (1, 2 ou 3)</option></select></label><label class="ar-opt">Mode <select id="ar-mpmode"><option value="solo">Chacun pour soi</option><option value="duo">Duo (équipes de 2 dans l'ordre de la liste)</option></select></label><p class="ar-hint">En duo : le 1er et le 2e joueur font équipe, le 3e et le 4e, etc. Un joueur seul reçoit un bot comme coéquipier, et les places libres sont toujours tenues par des bots.</p><label class="ar-opt">Bots sur les places libres <select id="ar-mpbots"><option value="oui">Oui</option><option value="non">Non</option></select></label><label class="ar-opt">Difficulté des bots <select id="ar-mpdiff"><option value="facile">Facile</option><option value="normal" selected>Normal</option><option value="difficile">Difficile</option><option value="variable">🎲 Variable (une difficulté par bot)</option></select></label><label class="ar-opt">Événement <select id="ar-mpev">${evOpts("hasard")}</select></label></div>
         <div class="ar-row"><button class="ar-b big go" data-act="mpstart">Lancer la partie</button><button class="ar-b" data-act="mpquit">Fermer le salon</button></div>` : `<p>En attente de l'hôte…</p><div class="ar-row"><button class="ar-b" data-act="mpquit">Quitter le salon</button></div>`}`; }
   }
   function mpBegin(s) {
@@ -913,7 +913,7 @@
       ${(() => { const sv = loadSave(); if (!sv || sv.mp) return ""; const r = sv.G.ri, st = r < 3 ? 1 : 2 + Math.floor((r - 3) / 7), k = r < 3 ? r + 1 : (r - 3) % 7 + 1; return `<div class="ar-box ar-resume"><h3>Partie en cours</h3><p>${sv.G.duo ? "Duo" : "Solo"} · manche ${st}-${k} · ❤️ ${Math.max(0, sv.G.players[sv.G.mei].hp)}</p><button class="ar-b big go" data-act="resume">▶ Reprendre</button></div>`; })()}
       <div class="ar-box"><h3>Solo contre 7 bots</h3>
         <div class="ar-diff"><span>Difficulté :</span>${[["facile", "Facile"], ["normal", "Normal"], ["difficile", "Difficile"], ["variable", "🎲 Variable"]].map(([k, l]) => `<button class="ar-b ${k === "normal" ? "on" : ""}" data-diff="${k}">${l}</button>`).join("")}</div><p class="ar-hint">Variable : chaque bot a sa propre difficulté, tirée au hasard.</p>
-        <label class="ar-opt">Cartes <select id="ar-set"><option value="1">Set 1 (65 unités)</option><option value="2">Set 2 (65 unités)</option>${API.admin ? `<option value="3">🔒 Set 3 (65 unités, admins)</option>` : ""}<option value="mix">Sets 1 et 2 mélangés</option><option value="alea">🎲 Set au hasard (1 ou 2)</option></select></label>
+        <label class="ar-opt">Cartes <select id="ar-set"><option value="1">Set 1 (65 unités)</option><option value="2">Set 2 (65 unités)</option><option value="3">Set 3 (65 unités)</option><option value="mix">Sets 1 et 2 mélangés</option><option value="alea">🎲 Set au hasard (1, 2 ou 3)</option></select></label>
         <label class="ar-opt">Mode <select id="ar-mode"><option value="solo">Chacun pour soi</option><option value="duo">Duo : toi et un bot contre 3 équipes</option></select></label>
         <label class="ar-opt">Événement <select id="ar-ev">${evOpts("")}</select></label>
         <button class="ar-b big go" data-act="start">Jouer en solo</button></div>
@@ -1049,6 +1049,7 @@
     const box = $("#ar-info"), x = UI.info; box.classList.toggle("open", !!x); box.classList.remove("mini");
     if (x && x.item != null) { box.innerHTML = itemHTML(x.item) + `<div class="ar-ibtn"><button class="ar-b mini" data-act="closeinfo">✕</button></div>`; return; }
     if (x && x.boss) { box.innerHTML = bossHTML(x.boss); return; }
+    if (!x && G.info.boss && G.phase === "plan" && SMALL()) { box.classList.add("open", "mini"); box.innerHTML = `<span class="ar-pos in f">💀 Boss</span><b class="ar-mn">${esc(artOf(G.info.boss).nm)}</b><button class="ar-b" data-act="bossinfo">Voir sa fiche</button>`; return; }
     if (!x && G.info.boss && G.phase === "plan") { box.classList.add("open"); box.innerHTML = `<div class="ar-bossw">⚠️ Combat de boss</div>` + bossHTML(G.info.boss, true); return; }
     if (!x) { box.innerHTML = `<div class="ar-tip"><b>💡 Conseil</b><p>${TIPS[G.ri % TIPS.length]}</p><p class="ar-hint">Touche une unité ou le « i » d'une carte pour voir sa fiche. Glisse tes unités pour les placer.</p></div>`; return; }
     const d = UN[x.n], a = artOf(x.n);
@@ -1189,6 +1190,7 @@
     if (a === "again") { root.classList.remove("spec"); clearInterval(UI.timer); clearTimeout(UI.cine); stopLoop(); music(null); if (G && G.mp) { const others = G.players.some(q => q.alive && !q.bot && q !== G.me) && !G.winner && G.me.place !== 1, gid = MP.gid; G = null; if (!others) rpc("ar_end", { p_room: MP.room }).catch(() => {}); mpRoom(); MP.deadGid = others ? gid : null; return; } return menu(); }
     if (a === "closeinfo") { UI.info = null; UI.sel = null; UI.selItem = null; return drawAll(); }
     if (a === "guide") return guide();
+    if (a === "bossinfo") { if (G && G.info.boss) { UI.sel = null; UI.info = { boss: G.info.boss }; drawInfo(); } return; }
     if (a === "spec") return specStart();
     if (a === "fullinfo") { if (UI.info) { UI.info.full = true; drawInfo(); } return; }
     if (a === "event") return evBanner();
