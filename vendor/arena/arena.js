@@ -3,7 +3,7 @@
   "use strict";
   const W = typeof window !== "undefined" ? window : globalThis;
   const IDS = W.ARENA_IDS || {};
-  const ORI = { catch: ["Catch", "🤼"], pol: ["Politique", "🏛️"], hor: ["Horreur", "👻"], manga: ["Manga", "🍥"], jv: ["Jeux vidéo", "🎮"], meme: ["Memes", "😹"], da: ["Dessins animés", "📺"], hero: ["Super-héros", "🦸"], vid: ["Vidéastes", "🎬"], chat: ["Chat", "🐱"], series: ["Séries", "🎞️"], disney: ["Disney", "🏰"], mytho: ["Mythologie", "⚡"] };
+  const ORI = { catch: ["Catch", "🤼"], pol: ["Politique", "🏛️"], hor: ["Horreur", "👻"], manga: ["Manga", "🍥"], jv: ["Jeux vidéo", "🎮"], meme: ["Memes", "😹"], da: ["Dessins animés", "📺"], hero: ["Super-héros", "🦸"], vid: ["Vidéastes", "🎬"], chat: ["Chat", "🐱"], series: ["Séries", "🎞️"], disney: ["Disney", "🏰"], mytho: ["Mythologie", "⚡"], wc: ["Joueurs Wiki Cards", "🃏"], chant: ["Chanteurs", "🎤"], hist: ["Histoire", "📜"], actx: ["Actrices X", "🔞"] };
   const CLS = { col: ["Colosse", "🛡️"], bag: ["Bagarreur", "👊"], ass: ["Assassin", "🗡️"], tir: ["Tireur", "🏹"], mag: ["Mage", "✨"], sou: ["Soutien", "💚"], str: ["Stratège", "📣"] };
   const TNAME = k => (ORI[k] || CLS[k])[0], TICO = k => (ORI[k] || CLS[k])[1];
   // synergies : paliers (t), valeurs par palier (v), description (d)
@@ -21,6 +21,10 @@
     series: { t: [3, 5, 7, 9], v: [[120], [280], [480], [750]], d: v => `Au début du combat, toute ton équipe reçoit un bouclier de ${v[0]}.` },
     disney: { t: [3, 5, 7, 9], v: [[1.5], [3], [5], [8]], d: v => `Les unités Disney récupèrent ${v[0]} % de leurs PV max chaque seconde.` },
     mytho: { t: [3, 5, 7, 9], v: [[12], [25], [40], [60]], d: v => `Les unités de Mythologie infligent ${v[0]} % de dégâts en plus.` },
+    wc: { t: [3, 5, 7, 9], v: [[3], [5], [8], [12]], d: v => `Fragments : à chaque ennemi éliminé par ton équipe, les Joueurs infligent ${v[0]} % de dégâts en plus jusqu'à la fin du combat.` },
+    chant: { t: [3, 5, 7, 9], v: [[15], [30], [45], [70]], d: v => `Les Chanteurs commencent le combat avec ${v[0]} mana.` },
+    hist: { t: [3, 5, 7, 9], v: [[10], [20], [35], [55]], d: v => `Savoir : toute ton équipe gagne ${v[0]} % de puissance des sorts.` },
+    actx: { t: [3, 5, 7, 9], v: [[8], [15], [24], [35]], d: v => `Charme : les ennemis attaquent ${v[0]} % moins vite.` },
     col: { t: [2, 4, 6], v: [[200], [450], [800]], d: v => `Les Colosses gagnent ${v[0]} PV.` },
     bag: { t: [2, 4, 6], v: [[10], [20], [35]], d: v => `Les Bagarreurs se soignent de ${v[0]} % des dégâts qu'ils infligent.` },
     ass: { t: [2, 4, 6], v: [[15, 20], [30, 40], [50, 60]], d: v => `Les Assassins sautent sur la ligne arrière et gagnent ${v[0]} % de chance de critique et ${v[1]} % de dégâts critiques.` },
@@ -34,7 +38,7 @@
   const HPB = [550, 700, 850, 1050, 1300], ADB = [45, 52, 62, 75, 95], SPD = [200, 260, 330, 430, 620], STAR = [1, 1.8, 3.24], SSTAR = [1, 1.5, 2.4];
   const COSTC = ["#8a94a6", "#2fbf71", "#3b82f6", "#b44cf0", "#f5b301"];
   const UN = {};   // unités du set
-  let CURSET = 1; const SETS = { 1: [], 2: [], 3: [] };
+  let CURSET = 1; const SETS = { 1: [], 2: [], 3: [], 4: [] };
   const U = (n, c, cl, o, s) => { UN[n] = { n, c, cl, o, s }; SETS[CURSET].push(n); };
   // --- Set 1 ---
   U("Rey Mysterio", 1, "ass", ["catch"], { k: "strike", p: .8, stun: .5, n: "619", t: "Frappe sa cible et l'étourdit." });
@@ -237,6 +241,73 @@
   U("Achille", 4, "col", ["mytho"], { k: "dodge", d: 2.5, v: .5, n: "Invulnérable", t: "Esquive toutes les attaques pendant 2,5 s, puis frappe plus fort." });
   U("Susanoo", 5, "ass", ["mytho"], { k: "strike", p: 1.5, tp: "low", reset: 1, n: "Kusanagi", t: "Fond sur l'ennemi le plus faible. S'il l'élimine, il relance son sort aussitôt." });
   U("Cronos", 5, "str", ["mytho"], { k: "stunall", p: 1, stun: [1.5, 2, 3.5], m: 70, n: "Arrêt du temps", t: "Fige et blesse tous les ennemis." });
+  // --- Set 4 : 5 univers de 13 unités ---
+  CURSET = 4;
+  U("Benjy", 1, "ass", ["wc"], { k: "strike", p: 1.2, stun: .8, n: "Coup en douce", t: "Frappe sa cible par surprise et l'étourdit." });
+  U("hcn910", 1, "col", ["wc"], { k: "heal", who: "self", p: .6, selfArmor: 8, n: "De type Acier", t: "Se blinde : récupère des PV et gagne de l'armure." });
+  U("Mac JB", 1, "bag", ["wc"], { k: "multi", cnt: 2, p: .55, n: "Une-deux", t: "Enchaîne deux ennemis proches." });
+  U("barb", 2, "mag", ["wc"], { k: "line", p: 1.3, n: "Barbelés", t: "Une ligne de barbelés traverse le plateau." });
+  U("et01le", 2, "sou", ["wc"], { k: "buff", who: "all", s: "as", v: .2, d: 4, m: 50, n: "Étoile filante", t: "Toute l'équipe gagne 20 % de vitesse d'attaque pendant 4 s." });
+  U("kalibunny", 2, "sou", ["wc"], { k: "heal", who: "near", p: .9, n: "Câlin de lapin", t: "Soigne les alliés proches." });
+  U("aymeric6103", 3, "tir", ["wc"], { k: "buff", who: "self", s: "as", v: .8, d: 5, n: "Oui Bon !", t: "S'énerve : +80 % de vitesse d'attaque pendant 5 s." });
+  U("fr0mnowhere", 3, "tir", ["wc"], { k: "far", p: 1.1, n: "Sortie de nulle part", t: "Un tir surgi de nulle part sur l'ennemi le plus éloigné." });
+  U("Mistiroro", 3, "sou", ["wc"], { k: "heal", who: "low", p: 1.4, sh: .6, n: "Brume", t: "Soigne fortement et protège l'allié le plus blessé." });
+  U("alyssaltaïrr", 4, "mag", ["wc"], { k: "aoeS", p: 1.3, r: 2, stun: 1.5, n: "Slayyyyy", t: "Rayonne : blesse et étourdit tous les ennemis dans une large zone." });
+  U("Vivian", 4, "bag", ["wc"], { k: "aoeS", p: .9, r: 1, ls: .25, n: "Coup de boule", t: "Frappe tout autour de lui et se soigne." });
+  U("Cyril", 5, "col", ["wc"], { k: "aoeS", p: 1, r: 2, stun: 1.2, mb: 40, n: "Feur !", t: "« Quoi ? — Feur ! » Les ennemis autour sont sonnés, blessés et perdent 40 mana." });
+  U("Claude", 5, "str", ["wc"], { k: "buff", who: "all", s: "amp", v: .3, d: 6, m: 60, n: "Mise à jour", t: "Déploie un correctif : toute l'équipe inflige 30 % de dégâts en plus pendant 6 s." });
+  U("Lorenzo", 1, "tir", ["chant"], { k: "strike", p: .5, phys: 1, n: "Coup de bob", t: "Un tir critique garanti." });
+  U("Naïka", 1, "sou", ["chant"], { k: "mana", r: 2, v: 25, m: 50, n: "Sauce", t: "Donne 25 mana aux alliés proches." });
+  U("Rick Ross", 1, "col", ["chant"], { k: "aoeS", p: .6, r: 1, n: "The Boss", t: "Un grognement qui blesse les ennemis adjacents." });
+  U("Angèle", 2, "sou", ["chant"], { k: "heal", who: "low", p: 1, sh: .5, n: "Balance ton quoi", t: "Soigne et protège l'allié le plus blessé." });
+  U("XXXTentacion", 2, "ass", ["chant"], { k: "strike", p: 1.3, untarg: 1, n: "Look at Me!", t: "Frappe puis s'éclipse : inciblable 1 s." });
+  U("Kendrick Lamar", 2, "str", ["chant"], { k: "strike", p: .9, weaken: .3, d: 5, m: 60, n: "HUMBLE.", t: "Rend sa cible humble : elle inflige 30 % de dégâts en moins pendant 5 s." });
+  U("Dua Lipa", 3, "tir", ["chant"], { k: "multi", cnt: 3, p: .15, phys: 1, n: "Levitating", t: "Trois tirs critiques sur 3 cibles." });
+  U("Bad Bunny", 3, "bag", ["chant"], { k: "strike", p: 1.4, stun: 1.2, n: "Conejo Malo", t: "Un gros coup qui étourdit sa cible." });
+  U("Céline Dion", 3, "mag", ["chant"], { k: "aoeT", p: .9, r: 1, stun: 1, n: "Note tenue", t: "Une note si puissante qu'elle blesse et étourdit sa cible et ses voisins." });
+  U("Shakira", 4, "bag", ["chant"], { k: "aoeS", p: 1, r: 2, stun: 1, n: "Hips Don't Lie", t: "Un déhanché qui blesse et étourdit dans une large zone." });
+  U("Ariana Grande", 4, "mag", ["chant"], { k: "line", p: 1.5, stun: 1, n: "Note sifflée", t: "Une note suraiguë traverse toute une ligne : dégâts et étourdissement." });
+  U("Michael Jackson", 5, "ass", ["chant"], { k: "strike", p: 1.7, tp: "low", untarg: 1.5, n: "Moonwalk", t: "Glisse jusqu'à l'ennemi le plus faible, le frappe, puis s'éloigne en moonwalk : inciblable 1,5 s." });
+  U("Paul McCartney", 5, "str", ["chant"], { k: "heal", who: "all", p: .8, sh: .5, m: 80, n: "Hey Jude", t: "Tout le monde chante : soigne et protège toute l'équipe." });
+  U("Krobus", 1, "mag", ["jv"], { k: "strike", p: 1.3, n: "Œuf du néant", t: "Lance un œuf du néant sur sa cible." });
+  U("Thibou", 1, "str", ["jv"], { k: "buff", who: "near", s: "ad", v: .25, d: 5, m: 50, n: "Leçon du musée", t: "Les alliés proches gagnent 25 % de dégâts d'attaque pendant 5 s." });
+  U("Chikipi", 1, "bag", ["jv"], { k: "strike", p: 1, n: "Coup de bec", t: "Fonce sur sa cible." });
+  U("Frisk", 2, "sou", ["jv"], { k: "heal", who: "low", p: .9, pas: "revive", n: "Détermination", t: "Soigne l'allié le plus blessé. Passif : revient une fois d'entre les morts." });
+  U("Luigi", 2, "tir", ["jv"], { k: "far", p: .7, pull: 1, n: "Ectoblast", t: "Aspire l'ennemi le plus éloigné jusqu'à lui." });
+  U("Chomp", 2, "col", ["jv"], { k: "strike", p: 1.2, stun: 1, n: "Morsure", t: "Tire sur sa chaîne et mord : dégâts et étourdissement." });
+  U("Lae'zel", 3, "bag", ["jv"], { k: "buff", who: "self", s: "as", v: .7, d: 5, n: "Fougue", t: "Tchk ! +70 % de vitesse d'attaque pendant 5 s." });
+  U("Bonnie", 3, "mag", ["jv"], { k: "aoeT", p: .9, r: 1, stun: 1, n: "Jumpscare", t: "Surgit du noir : blesse et étourdit sa cible et ses voisins." });
+  U("Cloth", 3, "col", ["jv"], { k: "aoeS", p: 1.1, r: 1, stun: 1.2, n: "Massue", t: "Un coup de massue qui étourdit les ennemis adjacents." });
+  U("Genji", 4, "ass", ["jv"], { k: "strike", p: 1.5, tp: "low", reset: 1, n: "Lame du dragon", t: "Fond sur l'ennemi le plus faible. S'il l'élimine, il relance son sort aussitôt." });
+  U("Steve", 4, "str", ["jv"], { k: "boom", p: 1.5, r: 2, sh: .8, n: "TNT", t: "Se protège 3 s derrière ses blocs, puis sa TNT explose dans une large zone." });
+  U("Geralt de Riv", 5, "ass", ["jv"], { k: "aoeS", p: 1.2, r: 1, ls: .4, n: "Tourbillon", t: "Tournoie avec ses deux épées et se soigne des dégâts infligés." });
+  U("L'Empereur", 5, "col", ["jv"], { k: "aoeT", p: .9, r: 2, stun: 2, n: "Décharge psionique", t: "Une onde mentale blesse et étourdit une large zone." });
+  U("Marco Polo", 1, "sou", ["hist"], { k: "heal", who: "near", p: .6, n: "Route de la soie", t: "Soigne les alliés proches." });
+  U("Leif Erikson", 1, "bag", ["hist"], { k: "strike", p: 1, stun: .8, n: "Vinland", t: "Un coup de hache qui étourdit." });
+  U("Jeffrey Dahmer", 1, "ass", ["hist"], { k: "strike", p: 1.2, tp: "low", n: "Prédateur", t: "Surgit sur l'ennemi le plus faible." });
+  U("Alfred Nobel", 2, "tir", ["hist"], { k: "aoeT", p: .75, r: 1, n: "Dynamite", t: "Un bâton de dynamite explose sur sa cible et ses voisins." });
+  U("Erik le Rouge", 2, "col", ["hist"], { k: "aoeS", p: .8, r: 1, n: "Hache viking", t: "Tranche tous les ennemis adjacents." });
+  U("Alan Turing", 2, "sou", ["hist"], { k: "strike", p: .8, vuln: .2, d: 6, m: 60, n: "Enigma", t: "Déchiffre sa cible : elle subit 20 % de dégâts en plus pendant 6 s." });
+  U("Karl Marx", 3, "str", ["hist"], { k: "buff", who: "all", s: "amp", v: .2, d: 6, m: 50, n: "Lutte des classes", t: "Toute l'équipe inflige 20 % de dégâts en plus pendant 6 s." });
+  U("Christophe Colomb", 3, "bag", ["hist"], { k: "strike", p: 1.4, stun: 1, n: "Terre en vue !", t: "Débarque sur sa cible : dégâts et étourdissement." });
+  U("Barbe Noire", 3, "ass", ["hist"], { k: "strike", p: 1.4, tp: "low", pas: "goldkill", n: "Abordage", t: "Aborde l'ennemi le plus faible. Passif : 1 or par élimination (2 max par combat)." });
+  U("Marie Curie", 4, "mag", ["hist"], { k: "aoeT", p: .6, r: 2, dot: 1.6, d: 5, n: "Radioactivité", t: "Irradie une large zone, qui continue de subir des dégâts pendant 5 s." });
+  U("Nikola Tesla", 4, "tir", ["hist"], { k: "multi", cnt: 4, p: .9, stun: .5, n: "Bobine Tesla", t: "Des arcs électriques frappent et sonnent 4 ennemis." });
+  U("Albert Einstein", 5, "str", ["hist"], { k: "aoeT", p: 1.6, r: 2, m: 70, n: "E = mc²", t: "Une explosion d'énergie dévaste une large zone." });
+  U("Tokugawa Ieyasu", 5, "col", ["hist"], { k: "taunt", r: 3, d: 3.5, v: 30, m: 75, n: "Shogun", t: "Provoque tous les ennemis alentour et donne de l'armure à toute l'équipe." });
+  U("Rebeca Linares", 1, "ass", ["actx"], { k: "strike", p: 1.2, stun: .6, n: "Olé", t: "Frappe sa cible et l'étourdit." });
+  U("Carmella Bing", 1, "sou", ["actx"], { k: "heal", who: "low", p: .5, sh: .8, n: "Réconfort", t: "Soigne un peu et protège l'allié le plus blessé." });
+  U("Céline Tran", 1, "tir", ["actx"], { k: "strike", p: .5, phys: 1, n: "Arts martiaux", t: "Un coup critique garanti." });
+  U("Eimi Fukada", 2, "mag", ["actx"], { k: "strike", p: 1.2, stun: 1.5, n: "Kawaii", t: "Sa cible reste bouche bée : étourdie 1,5 s." });
+  U("Autumn Falls", 2, "tir", ["actx"], { k: "multi", cnt: 2, p: .1, phys: 1, n: "Feuilles d'automne", t: "Tire sur deux cibles à la fois." });
+  U("Liza Del Sierra", 2, "str", ["actx"], { k: "buff", who: "near", s: "ad", v: .3, d: 5, m: 50, n: "Coaching", t: "Les alliés proches gagnent 30 % de dégâts d'attaque pendant 5 s." });
+  U("Madison Ivy", 3, "str", ["actx"], { k: "multi", cnt: 2, p: .7, stun: 1.2, m: 70, n: "Clin d'œil", t: "Un clin d'œil étourdit et blesse 2 ennemis." });
+  U("Ava Addams", 3, "col", ["actx"], { k: "taunt", r: 2, d: 3, v: 25, m: 75, n: "Diva", t: "Attire l'attention des ennemis proches et donne de l'armure à toute l'équipe." });
+  U("Hitomi Tanaka", 3, "bag", ["actx"], { k: "aoeS", p: .8, r: 1, ls: .25, n: "Entrée en scène", t: "Frappe tout autour d'elle et se soigne." });
+  U("Lana Rhoades", 4, "mag", ["actx"], { k: "far", p: 2.2, stun: 1.5, n: "Coup de foudre", t: "L'ennemi le plus éloigné est foudroyé : gros dégâts et étourdissement." });
+  U("Mia Khalifa", 4, "ass", ["actx"], { k: "strike", p: 1.6, tp: "low", stun: 1, n: "Buzz", t: "Surgit sur l'ennemi le plus faible : dégâts et étourdissement." });
+  U("Angela White", 5, "col", ["actx"], { k: "aoeS", p: 1.1, r: 2, stun: 1.8, n: "Présence", t: "Impose sa présence : étourdit tous les ennemis dans une large zone." });
+  U("Riley Reid", 5, "str", ["actx"], { k: "buff", who: "all", s: "as", v: .35, d: 6, m: 60, n: "Tête d'affiche", t: "Toute l'équipe gagne 35 % de vitesse d'attaque pendant 6 s." });
   // les Docteurs envoyés par le TARDIS : [PV, dégâts, vitesse, portée, sort]
   const DOCS = {
     "Premier Docteur": [700, 40, .65, 3, { k: "heal", who: "low", p: 1, n: "Sagesse" }],
@@ -246,7 +317,7 @@
     "Douzième Docteur": [2000, 110, .85, 3, { k: "stunall", p: .9, stun: [1.5, 1.5, 1.5], n: "Guitare sonique" }],
   };
   const DOCT = [["Premier Docteur", "Neuvième Docteur"], ["Dixième Docteur", "Onzième Docteur"], ["Douzième Docteur"]];
-  const SETN = { 1: "Set 1", 2: "Set 2", 3: "Set 3", mix: "Sets 1 et 2 mélangés" };
+  const SETN = { 1: "Set 1", 2: "Set 2", 3: "Set 3", 4: "Set 4", mix: "Sets 1 et 2 mélangés" };
   let SET = SETS[1];
   // monstres neutres : [nom, PV, dégâts, vitesse]
   const MON = { Dodo: [170, 14, .6], Capybara: [230, 18, .6], Loup: [300, 26, .8], Oie: [520, 48, .9], Sanglier: [900, 70, .7], "Ours brun": [1500, 95, .65] };
@@ -384,7 +455,7 @@
   function traitsOf(list, aug) { const seen = new Set(), n = {}; list.forEach(x => { if (seen.has(x.n) || !UN[x.n]) return; seen.add(x.n); const d = UN[x.n]; [...d.o, d.cl].forEach(k => n[k] = (n[k] || 0) + 1); }); if (aug && aug.includes("chats2") && n.chat) n.chat *= 2; if (EVT === "chats" && list.length) n.chat = (n.chat || 0) + 1; return n; }
   const TR3 = { hor: { t: [3, 5, 7, 9], v: [[12], [25], [40], [60]] }, jv: { t: [3, 5, 7, 9], v: [[8], [16], [26], [40]] } };
   let CURT = 0;   // 3 pendant une partie du set 3 (13 unités par univers : paliers 3 / 5 / 7 / 9)
-  const TRof = k => CURT === 3 && TR3[k] ? Object.assign({}, TR[k], TR3[k]) : TR[k];
+  const TRof = k => CURT && TR3[k] ? Object.assign({}, TR[k], TR3[k]) : TR[k];
   const tier = (k, n) => { let i = -1; TRof(k).t.forEach((t, j) => { if (n >= t) i = j; }); return i; };
 
   /* ---------- simulation de combat ---------- */
@@ -429,6 +500,10 @@
         else if (k === "series") mine.forEach(u => u.shield += v[0]);
         else if (k === "disney") mem.forEach(u => u.regen += v[0] / 100);
         else if (k === "mytho") mem.forEach(u => u.amp += v[0] / 100);
+        else if (k === "wc") { S.wc = S.wc || [0, 0]; S.wc[side] = v[0] / 100; }
+        else if (k === "chant") mem.forEach(u => u.mana += v[0]);
+        else if (k === "hist") mine.forEach(u => u.sp += v[0] / 100);
+        else if (k === "actx") foes.forEach(u => u.as *= 1 - v[0] / 100);
       }); });
     [A, B].forEach((T, side) => { const AG = T.aug || []; if (!AG.length) return; S.units.forEach(u => { if (u.side !== side) return;
       if (AG.includes("muscu")) u.amp += .12; if (AG.includes("blindage")) { u.armor += 20; u.mr += 20; } if (AG.includes("cardio")) u.as *= 1.12; if (AG.includes("infirmerie")) u.regen += .01;
@@ -466,6 +541,7 @@
       if (t.revive) { t.revive = false; t.hp = t.maxhp * .25; t.stunT = S.t + .8; t.dots = []; t.burnT = 0; S.ev.push({ k: "cast", u: t.uid, n: "Se relève !" }); }
       else if (t.doudou) { t.doudou = false; t.hp = t.maxhp * .3; t.dots = []; t.burnT = 0; S.ev.push({ k: "cast", u: t.uid, n: "🧸 Doudou !" }); }
       else { t.alive = false; t.hp = 0; delete S.grid[t.R + "," + t.C]; S.ev.push({ k: "die", u: t.uid });
+        if (S.wc && S.wc[1 - t.side] && !t.sum) S.units.forEach(a => { if (a.alive && a.side !== t.side && a.o && a.o.includes("wc")) a.amp += S.wc[1 - t.side]; });
         if (src) { src.kills++; if (src.owner) src.owner.kills++; if (src.it.ticket && (src.tk || 0) < 2) { src.tk = (src.tk || 0) + 1; S.gold[src.side]++; S.ev.push({ k: "gold", u: src.uid }); } if (src.spell && src.spell.pas === "goldkill" && (src.gk || 0) < 2) { src.gk = (src.gk || 0) + 1; S.gold[src.side]++; S.ev.push({ k: "gold", u: src.uid }); } if (o.reset && src.alive) src.mana = src.maxMana; } }
     }
     return amt;
@@ -478,6 +554,7 @@
     if (sp.phys) dmg(S, u, e, p + u.ad * (1 + bsum(S, u, "ad")) * 1.2, "p", Object.assign(o, { crit: 1 })); else dmg(S, u, e, p, "m", o);
     if (!e.alive) return;
     if (sp.stun && !e.it.tippex) e.stunT = Math.max(e.stunT, S.t + (Array.isArray(sp.stun) ? sp.stun[u.star - 1] : sp.stun) * (e.boss ? .4 : 1));
+    if (sp.mb && e.maxMana && !e.boss) e.mana = Math.max(0, e.mana - sp.mb);
     if (sp.vuln) { e.vuln = sp.vuln; e.vulnT = S.t + sp.d; }
     if (sp.weaken) e.buffs.push({ s: "weak", v: sp.weaken, until: S.t + sp.d });
     if (sp.slow) e.buffs.push({ s: "as", v: -sp.slow, until: S.t + sp.d });
@@ -576,7 +653,7 @@
   // o : { event, humans: [{ uid, name }], me: index, bots: bool } pour le multijoueur
   function newGame(diff, seed, o) {
     o = o || {}; seed = seed || (Date.now() & 0x7fffffff); const rng = rng32(seed), names = BOTN.slice().sort(() => rng() - .5), AV = ["👑", "🦊", "🐸", "🐼", "🐙", "🦉", "🐷", "🐯", "🦄"];
-    EVT = o.event && EVENTS[o.event] ? o.event : null; SET = o.set === "mix" ? SETS[1].concat(SETS[2]) : SETS[o.set] || SETS[1]; CURT = o.set === 3 ? 3 : 0;
+    EVT = o.event && EVENTS[o.event] ? o.event : null; SET = o.set === "mix" ? SETS[1].concat(SETS[2]) : SETS[o.set] || SETS[1]; CURT = o.set === 3 || o.set === 4 ? o.set : 0;
     G = { set: o.set || 1, duo: !!o.duo, teams: [0, 1, 2, 3].map(() => ({ hp: 100 })), diff, seed, rng, event: EVT, stat: { fights: 0, wins: 0 }, ri: 0, phase: "plan", players: [], pool: {}, out: 0, log: [], hist: {}, mp: !!o.humans };
     const H = o.humans || [{ name: "Toi" }]; H.forEach((h, i) => { const p = newPlayer(i, h.name, false); p.uid = h.uid || null; p.av = AV[i]; G.players.push(p); });
     if (!o.humans || o.bots !== false || o.duo) for (let i = H.length; i < 8; i++) { const p = newPlayer(i, names[i - 1], true); p.av = AV[i] || "🤖"; G.players.push(p); }
@@ -812,7 +889,7 @@
       } catch (err) { note(err.message); } };
   }
   const evOpts = sel => `<option value="">Aucun</option><option value="hasard" ${sel === "hasard" ? "selected" : ""}>🎲 Au hasard (toujours un événement)</option><option value="surprise" ${sel === "surprise" ? "selected" : ""}>❓ Surprise (un événement ou aucun)</option>` + Object.keys(EVENTS).map(k => `<option value="${k}" ${sel === k ? "selected" : ""}>${EVENTS[k][0]} ${EVENTS[k][1]}</option>`).join("");
-  const pickSet = v => v === "alea" ? 1 + Math.floor(Math.random() * 3) : ({ 1: 1, 2: 2, 3: 3 })[v] || "mix";
+  const pickSet = v => v === "alea" ? 1 + Math.floor(Math.random() * 3) : ({ 1: 1, 2: 2, 3: 3, 4: 4 })[v] || "mix";
   const pickEvent = v => v === "surprise" && Math.random() < .25 ? null : v === "hasard" || v === "surprise" ? Object.keys(EVENTS)[Math.floor(Math.random() * Object.keys(EVENTS).length)] : EVENTS[v] ? v : null;
   function mpRoom() { MP.sig = null; MP.gid = null; root.innerHTML = `<div class="ar-menu"><h1>⚔️ Salon</h1><div id="ar-room"><p>Connexion…</p></div></div>`;
     root.onclick = async e => { const a = e.target.closest("[data-act]"); if (!a) return;
@@ -834,7 +911,7 @@
     if (d.status !== "jeu") { if (G && G.mp && G.phase !== "over") { note("La partie a été arrêtée."); stopLoop(); clearInterval(UI.timer); G = null; mpRoom(); return; } if (G) return;
       const sig = JSON.stringify([d.players, d.host]); if (sig === MP.sig) return; MP.sig = sig; const b = root.querySelector("#ar-room"); if (!b) return;
       b.innerHTML = `<div class="ar-box"><h3>Joueurs (${d.players.length}/8)</h3>${d.players.map(p => `<div class="ar-lrow"><b>${esc(API.name(p.u))}${p.u === d.host ? " 👑" : ""}</b><span>${p.on ? "connecté" : "absent"}</span></div>`).join("")}</div>
-        ${MP.host ? `<div class="ar-box"><h3>Réglages</h3><label class="ar-opt">Cartes <select id="ar-mpset"><option value="1">Set 1 (65 unités)</option><option value="2">Set 2 (65 unités)</option><option value="3">Set 3 (65 unités)</option><option value="mix">Sets 1 et 2 mélangés</option><option value="alea">🎲 Set au hasard (1, 2 ou 3)</option></select></label><label class="ar-opt">Mode <select id="ar-mpmode"><option value="solo">Chacun pour soi</option><option value="duo">Duo (équipes de 2 dans l'ordre de la liste)</option></select></label><p class="ar-hint">En duo : le 1er et le 2e joueur font équipe, le 3e et le 4e, etc. Un joueur seul reçoit un bot comme coéquipier, et les places libres sont toujours tenues par des bots.</p><label class="ar-opt">Bots sur les places libres <select id="ar-mpbots"><option value="oui">Oui</option><option value="non">Non</option></select></label><label class="ar-opt">Difficulté des bots <select id="ar-mpdiff"><option value="facile">Facile</option><option value="normal" selected>Normal</option><option value="difficile">Difficile</option><option value="variable">🎲 Variable (une difficulté par bot)</option></select></label><label class="ar-opt">Événement <select id="ar-mpev">${evOpts("hasard")}</select></label></div>
+        ${MP.host ? `<div class="ar-box"><h3>Réglages</h3><label class="ar-opt">Cartes <select id="ar-mpset"><option value="1">Set 1 (65 unités)</option><option value="2">Set 2 (65 unités)</option><option value="3">Set 3 (65 unités)</option>${API.admin ? `<option value="4">Set 4 (65 unités · admins)</option>` : ""}<option value="mix">Sets 1 et 2 mélangés</option><option value="alea">🎲 Set au hasard (1, 2 ou 3)</option></select></label><label class="ar-opt">Mode <select id="ar-mpmode"><option value="solo">Chacun pour soi</option><option value="duo">Duo (équipes de 2 dans l'ordre de la liste)</option></select></label><p class="ar-hint">En duo : le 1er et le 2e joueur font équipe, le 3e et le 4e, etc. Un joueur seul reçoit un bot comme coéquipier, et les places libres sont toujours tenues par des bots.</p><label class="ar-opt">Bots sur les places libres <select id="ar-mpbots"><option value="oui">Oui</option><option value="non">Non</option></select></label><label class="ar-opt">Difficulté des bots <select id="ar-mpdiff"><option value="facile">Facile</option><option value="normal" selected>Normal</option><option value="difficile">Difficile</option><option value="variable">🎲 Variable (une difficulté par bot)</option></select></label><label class="ar-opt">Événement <select id="ar-mpev">${evOpts("hasard")}</select></label></div>
         <div class="ar-row"><button class="ar-b big go" data-act="mpstart">Lancer la partie</button><button class="ar-b" data-act="mpquit">Fermer le salon</button></div>` : `<p>En attente de l'hôte…</p><div class="ar-row"><button class="ar-b" data-act="mpquit">Quitter le salon</button></div>`}`; }
   }
   function mpBegin(s) {
@@ -913,7 +990,7 @@
       ${(() => { const sv = loadSave(); if (!sv || sv.mp) return ""; const r = sv.G.ri, st = r < 3 ? 1 : 2 + Math.floor((r - 3) / 7), k = r < 3 ? r + 1 : (r - 3) % 7 + 1; return `<div class="ar-box ar-resume"><h3>Partie en cours</h3><p>${sv.G.duo ? "Duo" : "Solo"} · manche ${st}-${k} · ❤️ ${Math.max(0, sv.G.players[sv.G.mei].hp)}</p><button class="ar-b big go" data-act="resume">▶ Reprendre</button></div>`; })()}
       <div class="ar-box"><h3>Solo contre 7 bots</h3>
         <div class="ar-diff"><span>Difficulté :</span>${[["facile", "Facile"], ["normal", "Normal"], ["difficile", "Difficile"], ["variable", "🎲 Variable"]].map(([k, l]) => `<button class="ar-b ${k === "normal" ? "on" : ""}" data-diff="${k}">${l}</button>`).join("")}</div><p class="ar-hint">Variable : chaque bot a sa propre difficulté, tirée au hasard.</p>
-        <label class="ar-opt">Cartes <select id="ar-set"><option value="1">Set 1 (65 unités)</option><option value="2">Set 2 (65 unités)</option><option value="3">Set 3 (65 unités)</option><option value="mix">Sets 1 et 2 mélangés</option><option value="alea">🎲 Set au hasard (1, 2 ou 3)</option></select></label>
+        <label class="ar-opt">Cartes <select id="ar-set"><option value="1">Set 1 (65 unités)</option><option value="2">Set 2 (65 unités)</option><option value="3">Set 3 (65 unités)</option>${API.admin ? `<option value="4">Set 4 (65 unités · admins)</option>` : ""}<option value="mix">Sets 1 et 2 mélangés</option><option value="alea">🎲 Set au hasard (1, 2 ou 3)</option></select></label>
         <label class="ar-opt">Mode <select id="ar-mode"><option value="solo">Chacun pour soi</option><option value="duo">Duo : toi et un bot contre 3 équipes</option></select></label>
         <label class="ar-opt">Événement <select id="ar-ev">${evOpts("")}</select></label>
         <button class="ar-b big go" data-act="start">Jouer en solo</button></div>
@@ -938,7 +1015,7 @@
       <p><b>Fragments :</b> une partie d'au moins 10 manches rapporte des fragments. La victoire vaut 250 contre des bots faciles, 500 normaux, 750 difficiles, et 1000 s'il y a d'autres joueurs en face ; les autres places en touchent une part (68 %, 48 %, 36 %… ; en duo 60 %, 32 %, 16 %).</p>
       <p><b>Duo :</b> deux joueurs partagent les mêmes PV. Chacun mène son combat ; si tu gagnes le tien, tes survivants partent en renfort chez ton coéquipier. Tu peux aussi lui donner une unité par manche (bouton 🎁 sur sa fiche).</p>
       <p><b>Mort subite :</b> après 30 s de combat, les dégâts augmentent et les soins diminuent jusqu'à ce qu'un camp tombe.</p>
-      <h3>Synergies</h3>${Object.keys(TR).filter(k => CLS[k] || k === "chat" && CURT !== 3 || SET.some(n => UN[n].o.includes(k))).map(k => `<p>${TICO(k)} <b>${TNAME(k)}</b> (${TRof(k).t.join(" / ")}) : ${TRof(k).t.map((t, i) => TRof(k).d(TRof(k).v[i])).slice(-1)[0].replace(/\d+(\.\d+)?/g, m => m)}</p>`).join("")}
+      <h3>Synergies</h3>${Object.keys(TR).filter(k => CLS[k] || k === "chat" && !CURT || SET.some(n => UN[n].o.includes(k))).map(k => `<p>${TICO(k)} <b>${TNAME(k)}</b> (${TRof(k).t.join(" / ")}) : ${TRof(k).t.map((t, i) => TRof(k).d(TRof(k).v[i])).slice(-1)[0].replace(/\d+(\.\d+)?/g, m => m)}</p>`).join("")}
       <button class="ar-b" data-act="tuto">🎓 Revoir le tutoriel</button>
       <p class="ar-hint">🎵 Musiques libres de droits : Infraction – No Copyright Music, MOKKA et Cold Cinema.</p>
       <button class="ar-b" data-x>Fermer</button></div>`;
@@ -1088,7 +1165,7 @@
   function saveGame() { if (!G || G.phase === "over" || typeof localStorage === "undefined") return; try { const o = Object.assign({}, G, { rng: undefined, me: undefined, fights: undefined, rs: G.rng.a, mei: G.me.id, phase: "plan" }); localStorage.setItem(SAVEK, JSON.stringify({ t: Date.now(), mp: !!G.mp, gid: G.mp ? MP.gid : null, uid: API && API.uid, G: o })); } catch (_) {} }
   function loadSave() { try { const o = JSON.parse(localStorage.getItem(SAVEK) || "null"); return o && o.G && Date.now() - o.t < 864e5 && (!API || !o.uid || o.uid === API.uid) ? o : null; } catch (_) { return null; } }
   function clearSave() { try { localStorage.removeItem(SAVEK); } catch (_) {} }
-  function restore(sv) { G = sv.G; G.rng = rng32(G.rs); G.me = G.players[G.mei]; G.fights = null; G.phase = "plan"; EVT = G.event && EVENTS[G.event] ? G.event : null; SET = G.set === "mix" ? SETS[1].concat(SETS[2]) : SETS[G.set] || SETS[1]; CURT = G.set === 3 ? 3 : 0; G.players.forEach(p => { p.choices = p.choices || []; p.aug = p.aug || []; }); UI.sel = UI.info = UI.selItem = null; UI.sim = UI.view = null; build0(); }
+  function restore(sv) { G = sv.G; G.rng = rng32(G.rs); G.me = G.players[G.mei]; G.fights = null; G.phase = "plan"; EVT = G.event && EVENTS[G.event] ? G.event : null; SET = G.set === "mix" ? SETS[1].concat(SETS[2]) : SETS[G.set] || SETS[1]; CURT = G.set === 3 || G.set === 4 ? G.set : 0; G.players.forEach(p => { p.choices = p.choices || []; p.aug = p.aug || []; }); UI.sel = UI.info = UI.selItem = null; UI.sim = UI.view = null; build0(); }
   /* ---------- fin de partie : enregistrement, fragments ---------- */
   async function logGame() {
     if (!G || G.logged || !API || !API.rpc) return; G.logged = true; clearSave(); const L = (G.me.place === 1 ? G.me.board : G.lastBoard || []).slice(0, 12).map(x => ({ n: x.n, s: x.star, it: x.it || [] }));
