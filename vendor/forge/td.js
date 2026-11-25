@@ -52,7 +52,9 @@
       power: (.6 + 1.1 * p) * (same ? 1.25 : 1) * (o.sameCat ? 1.08 : 1) * (o.aff ? 1.12 : 1), coinMul: .85 + .6 * p, hp: 0, hpMax: 0, combo: 0, beam: 0, orbA: 0, shake: 0, img: null, kills: 0 };
     stats(); G.hp = G.hpMax;
     if (o.img) { const im = new Image(); im.onload = () => { G.img = im; }; im.src = o.img; }
-    G.resize = () => { const r = cv.getBoundingClientRect(), d = Math.min(2, window.devicePixelRatio || 1); cv.width = r.width * d; cv.height = r.height * d; G.W = r.width; G.H = r.height; G.d = d; G.cx = r.width / 2; G.cy = r.height / 2; G.R = Math.hypot(r.width, r.height) / 2 + 30; G.k = Math.min(1, Math.min(r.width, r.height) / 520); };
+    G.resize = () => { // arène logique de taille fixe (demi-diagonale 420), mise à l'échelle de l'écran : même partie sur téléphone et sur grand écran
+      const r = cv.getBoundingClientRect(), d = Math.min(2, window.devicePixelRatio || 1), sc = Math.max(.4, Math.hypot(r.width, r.height) / 2 / 420); cv.width = r.width * d; cv.height = r.height * d;
+      G.sc = sc; G.W = r.width / sc; G.H = r.height / sc; G.d = d; G.cx = G.W / 2; G.cy = G.H / 2; G.R = 450; G.k = 1; };
     G.resize(); window.addEventListener("resize", G.resize);
     root.querySelector("#td-speed").onclick = e => { G.speed = G.speed === 1 ? 2 : G.speed === 2 ? 3 : 1; e.target.textContent = "×" + G.speed; };
     root.querySelector("#td-quit").onclick = e => { if (!e.target.dataset.sure) { e.target.dataset.sure = 1; e.target.textContent = "Sûr ? (fin de partie)"; setTimeout(() => { if (e.target.isConnected) { delete e.target.dataset.sure; e.target.textContent = "Abandonner"; } }, 3000); return; } end(); };
@@ -126,7 +128,7 @@
     G.en = G.en.filter(e => e.hp > 0); G.shake = Math.max(0, G.shake - dt);
     if (G.dirty || (G.ht = (G.ht || 0) + dt) > .25) { G.ht = 0; if (G.dirty) shop(); else hud(); G.dirty = false; }
     if (G.hp <= 0) end(); }
-  function draw() { const x = G.x, W = G.W, H = G.H; x.setTransform(G.d, 0, 0, G.d, 0, 0); x.clearRect(0, 0, W, H);
+  function draw() { const x = G.x, W = G.W, H = G.H; x.setTransform(G.d * G.sc, 0, 0, G.d * G.sc, 0, 0); x.clearRect(0, 0, W, H);
     const sx = G.shake ? (Math.random() - .5) * 5 : 0, sy = G.shake ? (Math.random() - .5) * 5 : 0; x.save(); x.translate(sx, sy);
     x.strokeStyle = "rgba(255,255,255,.045)"; x.lineWidth = 1; for (let r = 70; r < G.R; r += 70) { x.beginPath(); x.arc(G.cx, G.cy, r, 0, TAU); x.stroke(); }
     G.slots.forEach(s => { if (s.kind !== "skill" || !s.lv) return; const k = s.sk;
